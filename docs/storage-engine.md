@@ -173,7 +173,7 @@ flowchart TD
     CapCheck -- Yes --> PromptModal["Block Ingestion & Show Storage Quota Exceeded Modal"]
     PromptModal --> UserChoice{"User Selection"}
     UserChoice -- "Expand Cap (e.g. 250 MB)" --> UpdateCap["updateStorageCap(250 MB) & Grant Disk Expansion"]
-    UserChoice -- "Open Cleanup Tools" --> Cleanup["Bulk Delete Unstarred Articles by Domain or Age"]
+    UserChoice -- "Clean Up Articles" --> Cleanup["Delete Specific Articles (Card Trash / Multi-Select Table) OR Bulk Cleanup by Domain/Age"]
     UpdateCap --> Save["Proceed with Atomic Save"]
     CapCheck -- No --> WarnCheck{"Usage Ratio >= 85%?"}
     WarnCheck -- Yes --> ShowWarn["Display Warning Banner & Proceed with Save"]
@@ -207,9 +207,12 @@ Where:
 
 1. **Normal (`usageRatio < 0.85`):** Saves proceed transparently.
 2. **Warning (`0.85 <= usageRatio < 1.0`):** Saves proceed normally, but a warning badge is emitted to the Side Panel encouraging preventative cleanup.
-3. **Quota Exceeded (`currentUsage + payload > maxStorageBytes`):** Ingestion pauses immediately. The user is presented with choices:
-   - Expand storage budget to suggested cap (`250 MB` or $2\times$ current cap).
-   - Launch Cleanup Tools to bulk-delete unstarred articles by age or domain.
+3. **Quota Exceeded (`currentUsage + payload > maxStorageBytes`):** Ingestion pauses immediately. The user is presented with two explicit choices:
+   - **Expand Storage Budget:** Increase the disk allocation to a higher maximum limit (`250 MB` default or custom MB value).
+   - **Clean Up Articles:** Free up space using any of three granular cleanup methods:
+     1. **Specific Individual Articles:** Click the trash icon on specific cards in the Side Panel or the `[Remove]` button on the active tab banner (`deleteArticles([id])`).
+     2. **Multi-Select Bulk Deletion:** Open the Full-Screen Knowledge Manager (`options.html`) and check specific articles in the table to batch delete them.
+     3. **One-Click Bulk Cleanup:** Purge all unstarred articles older than 60/90 days or all unstarred articles from a specific domain (`bulkDeleteUnstarred`).
 4. **Low Physical Disk Guardrail (`freePhysicalDiskBytes < 500 MB`):** Ingestion is strictly blocked regardless of the user's extension cap until space is freed on the host machine.
 
 ---

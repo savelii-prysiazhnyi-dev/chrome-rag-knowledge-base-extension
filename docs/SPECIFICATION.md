@@ -44,7 +44,10 @@ All machine learning inference and data storage happen **100% locally on the use
   - **Baseline IndexedDB Cap (Default `50 MB`):** By default, the extension operates within a strict `50 MB` application-enforced IndexedDB quota (~1,000–1,500 articles including vectors and Markdown) and does **not** request unrestricted disk access on install (`unlimitedStorage` is kept as an optional permission).
   - **Near-Full / Quota Exceeded Prompt:** When IndexedDB usage reaches **85% of the current budget** (warning banner) or **100% during a save attempt** (blocking modal), the extension pauses and prompts the user with two choices:
     1. **Allocate More Disk Space:** The user can authorize the extension to use a specific maximum amount of disk space (pre-filled with a sensible default such as **`250 MB`**, or customizable via input/presets like `100 MB`, `250 MB`, `500 MB`, `1 GB`). If the user expands beyond Chrome's standard extension quota, the extension requests the optional `unlimitedStorage` permission while strictly enforcing the user's chosen MB cap.
-    2. **Clean Up Existing Articles:** Keep the current storage limit and open the cleanup view to remove older unstarred articles or bulk-delete by domain.
+    2. **Clean Up Existing Articles:** Keep the current storage limit and free up space:
+       - **Delete Specific Articles:** Remove individual articles via the trash icon on any card in the Side Panel or the `[Remove]` button on the active tab banner.
+       - **Multi-Select Batch Deletion:** Select specific rows via checkboxes in the Full-Screen Knowledge Manager table to delete only chosen articles.
+       - **Bulk Cleanup Shortcuts:** One-click actions to purge unstarred articles older than 60/90 days or all unstarred articles from a domain.
 - **Live Storage Dashboard:** Visual progress meter in the Side Panel and Knowledge Manager showing exact usage against the user's approved cap (e.g., _"Using 42.1 MB of your 50 MB limit (120 GB free on disk)"_) powered by `navigator.storage.estimate()`.
 - **Low Physical Disk Safety Guardrail:** If the user's physical hard drive has less than **500 MB** of free space (`quota - usage < 500 MB`), the extension displays a critical low-disk warning banner and blocks quota expansion.
 - **Bulk Cleanup Tools & Starred Protection:**
