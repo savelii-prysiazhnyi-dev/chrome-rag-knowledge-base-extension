@@ -1,0 +1,28 @@
+sequenceDiagram
+        autonumber
+        actor User
+        participant Page as Web Page (Content Script)
+        participant SW as Background Service Worker
+        participant Offscreen as Offscreen Document (AI Worker)
+        participant DB as IndexedDB (Local Storage)
+        participant SidePanel as Side Panel UI (React)
+
+        User->>Page: Visits article / clicks "Index Page"
+        Page->>Page: Run Mozilla Readability & split into text chunks
+        Page->>SW: chrome.runtime.sendMessage({ type: "INDEX_PAGE", data })
+        SW->>DB: Save raw article metadata & chunks (status: "pending_embeddings")
+        SW->>SW: Ensure Offscreen Document exists
+        SW->>Offscreen: chrome.runtime.sendMessage({ type: "GENERATE_EMBEDDINGS", chunks })
+        Offscreen->>Offscreen: Run @xenova/transformers (all-MiniLM-L6-v2) via WebGPU/WASM
+        Offscreen->>SW: Return 384-dimensional vectors
+        SW->>DB: Save vectors to IndexedDB chunks store
+        SW->>SidePanel: chrome.runtime.sendMessage({ type: "PAGE_INDEXED", pageId })
+
+        Note over User,SidePanel: User searches in Side Panel
+        User->>SidePanel: Types query: "Rust memory management"
+        SidePanel->>SW: chrome.runtime.sendMessage({ type: "SEARCH", query })
+        SW->>Offscreen: Generate embedding for query
+        Offscreen-->>SW: Query vector
+        SW->>DB: Load stored vectors & compute Cosine Similarity
+        SW-->>SidePanel: Ranked matching pages & highlighted snippets
+        SidePanel-->>User: Displays clickable results
