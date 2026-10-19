@@ -21,7 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Configured `prettier` (`.prettierrc`, `.prettierignore`) with single quotes and avoid arrow parens matching project style.
   - Added `format`, `format:check`, `lint`, and `lint:fix` scripts in `package.json`.
   - Added `.gitignore` ignoring dependencies, build artifacts, and environment files.
-- **Agent Workflow Documentation** in `AGENTS.md` enforcing `CHANGELOG.md` maintenance and the 3-phase `/commit` skill workflow.
+- **Agent Engineering Guidelines (`AGENTS.md`):**
+  - Defined the core learning & deep-engineering philosophy (explicitly non-"vibe-coding", prioritizing theory, browser/ML internals, and architectural trade-offs).
+  - Added project overview, repository map, planned `src/` layout, and external documentation links.
+  - Enforced mandatory rules for code quality checks (`lint`, `format`, `typecheck`), subsystem architectural documentation in `docs/`, `CHANGELOG.md` maintenance, Semantic Versioning (SemVer), and automatic commits via `.agents/skills/commit/SKILL.md`.
 
 ### Changed
 
