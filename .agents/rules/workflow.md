@@ -27,24 +27,24 @@ Before delegating for the first time in a session, the Parent Agent **MUST** cal
 
 ---
 
-## 2. Step 1: Implementation Delegation (`implementer` — Pro / Flash Fallback)
+## 2. Step 1: Implementation Delegation (`implementer` — Sonnet Medium / Flash High Fallback)
 
 - Call `invoke_subagent` with:
   - `TypeName`: `"implementer"`
   - `Role`: `"Lead Implementer"`
-  - `Model`: `"pro"` (routes to Claude Sonnet 5.5 by default)
+  - `Model`: `"pro"` (routes to Claude Sonnet with **Medium** thinking level: `sonnet-5.5-medium`)
   - `Prompt`: Provide the user's task requirements, any referenced task/specification files, and architectural constraints. Instruct the implementer to update `CHANGELOG.md` (and `docs/` if applicable), run `pnpm run format`, and leave changes uncommitted.
 - **Quota Fallback & User Override:**
-  - If the user explicitly requests Flash (e.g., _"use flash"_ or _"claude quota low"_), or if the `Model="pro"` invocation fails/errors due to usage quota or rate limits, automatically invoke `implementer` with `Model="flash"` (Gemini 3.8 Flash).
+  - If the user explicitly requests Flash (e.g., _"use flash"_ or _"claude quota low"_), or if the `Model="pro"` invocation fails/errors due to usage quota or rate limits, automatically invoke `implementer` with `Model="flash"` (Gemini 3.8 Flash with **High** thinking level: `gemini-3.8-flash-high`).
 
 ---
 
-## 3. Step 2: Verification Delegation (`qa-tester` — Gemini 3.8 Flash)
+## 3. Step 2: Verification Delegation (`qa-tester` — Flash High)
 
 - Once `implementer` completes, call `invoke_subagent` with:
   - `TypeName`: `"qa-tester"`
   - `Role`: `"QA Tester"`
-  - `Model`: `"flash"`
+  - `Model`: `"flash"` (routes to Gemini 3.8 Flash with **High** thinking level: `gemini-3.8-flash-high`)
   - `Prompt`: `"Read and execute the qa-verify skill (.agents/skills/qa-verify/SKILL.md) to verify all current workspace changes and return the structured QA Verification Report."`
 - **Automated Feedback Loop:**
   - If `qa-tester` reports **FAIL** on any check, send the exact failure report to the existing `implementer` subagent using `send_message` to fix the issues.

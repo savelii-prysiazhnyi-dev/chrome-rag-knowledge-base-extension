@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `.gitignore` ignoring dependencies, build artifacts, and environment files.
 - **Agent Engineering Guidelines (`AGENTS.md`) & 3-Agent Development Pipeline (`.agents/rules/workflow.md`):**
   - Defined the core learning & deep-engineering philosophy (explicitly non-"vibe-coding", prioritizing theory, browser/ML internals, and architectural trade-offs).
-  - Added `.agents/rules/workflow.md` defining the 3-Agent Development Pipeline: Gemini 4 Argon (Lead Architect & Orchestrator), `implementer` (`Model="pro"` with automatic quota fallback to `Model="flash"`), and `qa-tester` (`Model="flash"`).
+  - Added `.agents/rules/workflow.md` defining the 3-Agent Development Pipeline: Gemini 4 Argon (Lead Architect & Orchestrator), `implementer` (`Model="pro"`: Sonnet with Medium thinking level `sonnet-5.5-medium`, with automatic quota fallback to `Model="flash"`: Gemini 3.8 Flash with High thinking level `gemini-3.8-flash-high`), and `qa-tester` (`Model="flash"`: Gemini 3.8 Flash with High thinking level `gemini-3.8-flash-high`).
   - Added `.agents/skills/qa-verify/SKILL.md` and `.agents/skills/qa-verify/scripts/verify.sh` to dynamically execute configured `package.json` verification checks (`lint`, `format:check`, `typecheck`, `test`, `build`) and produce structured QA reports.
   - Added project overview, repository map, planned `src/` layout, and external documentation links.
   - Enforced mandatory rules for code quality checks, subsystem architectural documentation in `docs/`, `CHANGELOG.md` maintenance, Semantic Versioning (SemVer), and automatic commits via `.agents/skills/commit/SKILL.md`.
