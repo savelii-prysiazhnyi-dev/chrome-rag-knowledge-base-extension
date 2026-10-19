@@ -249,6 +249,41 @@ The extension follows Manifest V3 specifications, dividing responsibilities acro
 
 ### 7.1 Database Schema (IndexedDB - 3rd Normal Form & Vertically Partitioned)
 
+```mermaid
+erDiagram
+    ARTICLES ||--|| ARTICLE_CONTENTS : "1:1 vertically partitioned by articleId"
+    ARTICLES ||--o{ CHUNKS : "1:N child chunks by articleId"
+
+    ARTICLES {
+        string id PK "SHA-256 hash of canonical URL"
+        string url UK "Unique index by_url"
+        string title "Extracted page title"
+        string byline "Author or publication (optional)"
+        string excerpt "Leading summary (~200 chars)"
+        string siteName "Index by_siteName (e.g. go.dev)"
+        string faviconUrl "Page favicon URL (optional)"
+        int savedAt "Index by_savedAt (ms epoch)"
+        int updatedAt "Timestamp of last re-index"
+        int readingTimeMinutes "Estimated reading time"
+        boolean isStarred "Index by_isStarred (pinned status)"
+        string status "indexing | indexed | failed"
+    }
+
+    ARTICLE_CONTENTS {
+        string articleId PK,FK "Foreign key -> ARTICLES.id"
+        string contentText "Clean plain text from Readability"
+        string contentMarkdown "Clean Markdown for export & reader view"
+    }
+
+    CHUNKS {
+        string id PK "${articleId}_chunk_${chunkIndex}"
+        string articleId FK "Foreign key & index by_articleId"
+        int chunkIndex "Sequential passage order (0-indexed)"
+        string text "Overlapping passage (~150-180 words)"
+        float32array vector "384-dimensional binary embedding (1536 B)"
+    }
+```
+
 ```typescript
 // Store 1: 'articles' (Lightweight metadata for fast feeds, filters & badges)
 // Indexes: 'by_url' (unique), 'by_siteName', 'by_savedAt', 'by_isStarred'

@@ -74,6 +74,30 @@ export const DEFAULT_STORAGE_SETTINGS: StorageSettings = {
   hasGrantedDiskExpansion: false,
 };
 
+// Storage Quota Status returned by checkStorageQuota()
+export interface StorageQuotaStatus {
+  /** Current storage usage in bytes from navigator.storage.estimate() */
+  currentUsageBytes: number;
+  /** User-configured storage cap in bytes */
+  maxStorageBytes: number;
+  /** Origin pool quota granted by browser in bytes */
+  browserQuotaBytes: number;
+  /** Estimated remaining physical disk storage in bytes */
+  freePhysicalDiskBytes: number;
+  /** Ratio of current usage to user cap (currentUsageBytes / maxStorageBytes) */
+  usageRatio: number;
+  /** True when usage ratio is at or above warnThresholdRatio (default 85%) */
+  isWarning: boolean;
+  /** True when current usage + requested payload exceeds maxStorageBytes */
+  isExceeded: boolean;
+  /** True when remaining physical disk space is under 500 MB */
+  isLowPhysicalDisk: boolean;
+  /** True when both quota is not exceeded and physical disk is not low */
+  canSave: boolean;
+  /** Suggested new cap when expanding storage (e.g. 250 MB or 2x current cap) */
+  suggestedNewCapBytes: number;
+}
+
 // Internal IPC Messaging Protocol (chrome.runtime.sendMessage)
 export type ExtensionMessage =
   | { type: 'INDEX_CURRENT_TAB' }

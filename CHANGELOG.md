@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 2: IndexedDB Relational + Vector Store & Quota Gatekeeper (`src/db`):**
+  - Installed `idb` in dependencies; installed `vitest`, `fake-indexeddb`, and `@types/node` in `devDependencies`.
+  - Configured `test` (`vitest run`) and `test:watch` (`vitest`) scripts in `package.json`, along with `vitest.config.ts` and `src/test/setup.ts` (`fake-indexeddb/auto`).
+  - Implemented strongly typed 3NF schema and database connection client in `src/db/schema.ts` and `src/db/client.ts` with singleton lifecycle methods (`getDB`, `closeDB`, `resetDB`) across 3 stores:
+    - `'articles'` (`id` PK; indexes: `'by_url'` [unique], `'by_siteName'`, `'by_savedAt'`, `'by_isStarred'`).
+    - `'article_contents'` (`articleId` PK/FK; 1:1 vertical partition storing clean text and Markdown).
+    - `'chunks'` (`id` PK; index: `'by_articleId'`; native `Float32Array(384)` binary vectors).
+  - Implemented relational and vector CRUD repository with atomic multi-store transactions in `src/db/repository.ts`:
+    - `upsertArticleWithContent`: Atomic transaction preserving original `isStarred` and `savedAt`, updating `updatedAt`, replacing full text, and wiping stale child chunks on re-index.
+    - `saveArticleChunks`: Atomically replaces child chunks with binary vectors (`Float32Array(384)`) and sets `article.status = 'indexed'`.
+    - `getArticleChunkCount`: Strict 3NF count query via `by_articleId` index in $O(\log N)$ time without chunk deserialization.
+    - `listArticles`: Reverse-chronological traversal via `by_savedAt` index cursor with optional domain and starred filtering.
+    - `getDomainCounts`: Aggregated article counts per domain sorted by count descending.
+    - `deleteArticles`: Atomic cascading deletion removing metadata, partitioned content, and all child vectors (zero orphaned vectors).
+    - `bulkDeleteUnstarred`: Single-transaction bulk cleanup matching age cutoff and/or domain while strictly protecting starred articles.
+    - Additional utilities: `getArticleById`, `getArticleByUrl`, `getArticleContent`, `getChunksByArticleId`, `getAllChunks`, `toggleArticleStar`, and `markArticleFailed`.
+  - Implemented Two-Layer Storage Quota Gatekeeper in `src/db/quota.ts`:
+    - Manages `StorageSettings` in `chrome.storage.local` with in-memory fallback, defaulting to 50 MB baseline cap and 85% warning threshold.
+    - `estimatePayloadBytes`: Accurately estimates serialized byte footprint of metadata, plain text, Markdown, and 1,536 bytes per chunk vector.
+    - `checkStorageQuota`: Enforces 85% warning threshold, 100% quota exceeded save block, `< 500 MB` low physical disk guardrail, and suggested expansion budget (250 MB / 2x current cap).
+    - `updateStorageCap`: Expands user storage budget in software and records explicit user consent (`hasGrantedDiskExpansion: true`).
+  - Created barrel export in `src/db/index.ts`.
+  - Added 19 comprehensive unit tests in `src/db/__tests__/db.test.ts` covering 3NF vertical partitioning, binary vector persistence, re-indexing preservation, atomic cascading deletes, bulk unstarred cleanup with starred protection, and all quota gatekeeper states.
+  - Added architectural documentation in `docs/storage-engine.md` with Mermaid `erDiagram`, relational/vector coexistence analysis, and quota flowcharts; embedded `erDiagram` in Section 7.1 of `docs/SPECIFICATION.md`; linked new doc in `AGENTS.md`.
+
 - **Phase 1: Project Scaffolding & WXT Manifest V3 Setup:**
   - Installed extension dependencies and build tools: `react` (v19), `react-dom` (v19), `lucide-react`, `wxt`, `@wxt-dev/module-react`, `typescript`, `@types/chrome`, `@types/react`, `@types/react-dom`, `tailwindcss` (v4), and `@tailwindcss/vite`.
   - Configured `package.json` scripts: `dev`, `build`, `zip`, `typecheck`, and `postinstall` (`wxt prepare`).

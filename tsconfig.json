@@ -3,6 +3,6 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "strict": true,
-    "types": ["chrome"]
+    "types": ["chrome", "node"]
   }
 }
