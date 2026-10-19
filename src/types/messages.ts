@@ -1,0 +1,134 @@
+/**
+ * Data contracts and messaging protocols for chrome-rag-knowledge-base-extension
+ * Derived from Section 7 of docs/SPECIFICATION.md
+ */
+
+// Store 1: 'articles' (Lightweight metadata for fast feeds, filters & badges)
+// Indexes: 'by_url' (unique), 'by_siteName', 'by_savedAt', 'by_isStarred'
+export interface ArticleRecord {
+  /** SHA-256 hash of canonical URL */
+  id: string;
+  /** Canonical page URL */
+  url: string;
+  /** Extracted article title */
+  title: string;
+  /** Author / publication */
+  byline?: string;
+  /** Leading summary (~200 chars) */
+  excerpt: string;
+  /** Domain name (e.g., "go.dev") */
+  siteName: string;
+  /** Page favicon URL */
+  faviconUrl?: string;
+  /** Epoch timestamp (ms) */
+  savedAt: number;
+  /** Epoch timestamp (ms) of last re-index */
+  updatedAt: number;
+  /** Estimated reading time */
+  readingTimeMinutes: number;
+  /** Pinned status (protected from bulk cleanup) */
+  isStarred: boolean;
+  /** Async ingestion lifecycle state */
+  status: 'indexing' | 'indexed' | 'failed';
+}
+
+// Store 2: 'article_contents' (1:1 vertical partition for heavy full text & export)
+// KeyPath: 'articleId'
+export interface ArticleContentRecord {
+  /** Foreign key -> ArticleRecord.id */
+  articleId: string;
+  /** Clean plain text from Readability */
+  contentText: string;
+  /** Clean Markdown for .zip export & reader view */
+  contentMarkdown: string;
+}
+
+// Store 3: 'chunks' (1:N child chunks + binary vector embeddings)
+// KeyPath: 'id' | Index: 'by_articleId'
+export interface ChunkRecord {
+  /** Format: `${articleId}_chunk_${chunkIndex}` */
+  id: string;
+  /** Foreign key -> ArticleRecord.id */
+  articleId: string;
+  /** 0-indexed sequential order */
+  chunkIndex: number;
+  /** ~150-180 word passage */
+  text: string;
+  /** 384-dimensional normalized binary vector (1,536 bytes) */
+  vector: Float32Array;
+}
+
+// Settings stored in chrome.storage.local
+export interface StorageSettings {
+  /** Quota cap in bytes. Default: 50 * 1024 * 1024 (50 MB) */
+  maxStorageBytes: number;
+  /** Ratio at which to trigger storage warning. Default: 0.85 */
+  warnThresholdRatio: number;
+  /** True once user explicitly raises the storage cap */
+  hasGrantedDiskExpansion: boolean;
+}
+
+export const DEFAULT_STORAGE_SETTINGS: StorageSettings = {
+  maxStorageBytes: 50 * 1024 * 1024, // 50 MB
+  warnThresholdRatio: 0.85,
+  hasGrantedDiskExpansion: false,
+};
+
+// Internal IPC Messaging Protocol (chrome.runtime.sendMessage)
+export type ExtensionMessage =
+  | { type: 'INDEX_CURRENT_TAB' }
+  | {
+      type: 'INDEX_PAGE_DATA';
+      payload: {
+        article: Omit<ArticleRecord, 'status'>;
+        content: Omit<ArticleContentRecord, 'articleId'>;
+        textChunks: string[];
+      };
+    }
+  | {
+      type: 'STORAGE_QUOTA_EXCEEDED';
+      payload: {
+        currentUsageBytes: number;
+        maxStorageBytes: number;
+        requiredBytes: number;
+        suggestedNewCapBytes: number; // e.g., 250 * 1024 * 1024 (250 MB)
+      };
+    }
+  | { type: 'UPDATE_STORAGE_CAP'; payload: { newMaxStorageBytes: number } }
+  | {
+      type: 'GENERATE_EMBEDDINGS_JOB';
+      payload: { articleId: string; textChunks: string[] };
+    }
+  | { type: 'ARTICLE_INDEXED'; payload: { articleId: string; url: string } }
+  | {
+      type: 'SEARCH_QUERY';
+      payload: {
+        query: string;
+        topK?: number;
+        domainFilter?: string;
+        starredOnly?: boolean;
+      };
+    }
+  | {
+      type: 'SEARCH_RESULTS';
+      payload: {
+        results: Array<{
+          article: ArticleRecord;
+          bestSnippet: string;
+          chunkIndex: number;
+          score: number;
+        }>;
+      };
+    }
+  | {
+      type: 'FIND_RELATED_ARTICLES';
+      payload: { text: string; excludeArticleId?: string; topK?: number };
+    }
+  | { type: 'SCROLL_AND_HIGHLIGHT'; payload: { snippet: string } }
+  | { type: 'DELETE_ARTICLES'; payload: { articleIds: string[] } }
+  | { type: 'CHECK_TAB_STATUS'; payload: { url: string } };
+
+export interface TabStatusResponse {
+  isSaved: boolean;
+  article?: ArticleRecord;
+}

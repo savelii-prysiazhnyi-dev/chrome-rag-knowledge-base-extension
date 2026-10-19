@@ -11,6 +11,12 @@
     "serviceworker": true,
     "worker": true
   },
+  "globals": {
+    "defineBackground": "readonly",
+    "defineContentScript": "readonly",
+    "defineUnlistedScript": "readonly",
+    "browser": "readonly"
+  },
   "ignorePatterns": ["node_modules", "dist", ".output", ".wxt"],
   "rules": {
     "react/rules-of-hooks": "error",

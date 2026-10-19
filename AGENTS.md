@@ -17,6 +17,7 @@
 
 - **Specifications & Architecture (`docs/`):**
   - [`docs/SPECIFICATION.md`](./docs/SPECIFICATION.md) — Master product, architecture, schema, and ADR specification (`v1.2.0`).
+  - [`docs/wxt-mv3-architecture.md`](./docs/wxt-mv3-architecture.md) — Manifest V3 process model, 5 core entrypoints, CSP, and IPC topology guide.
   - [`docs/sample-user-flow.mmd`](./docs/sample-user-flow.mmd) — Mermaid sequence diagram of the ingestion, quota gatekeeper, and hybrid search flows.
 - **Changelog & Project Metadata:**
   - [`CHANGELOG.md`](./CHANGELOG.md) — Release history and `[Unreleased]` change tracking ([Keep a Changelog](https://keepachangelog.com/en/1.1.0/)).
