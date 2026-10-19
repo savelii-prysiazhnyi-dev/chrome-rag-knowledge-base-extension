@@ -27,15 +27,15 @@ Before delegating for the first time in a session, the Parent Agent **MUST** cal
 
 ---
 
-## 2. Step 1: Implementation Delegation (`implementer` — Sonnet Medium / Flash High Fallback)
+## 2. Step 1: Implementation Delegation (`implementer` — Sonnet via inherit / Flash High Fallback)
 
 - Call `invoke_subagent` with:
   - `TypeName`: `"implementer"`
   - `Role`: `"Lead Implementer"`
-  - `Model`: `"pro"` (routes to Claude Sonnet with **Medium** thinking level: `sonnet-5.5-medium`)
+  - `Model`: `"inherit"` (when you switch the parent chat to Claude Sonnet in the UI model selector, `"inherit"` guarantees the subagent runs on Claude Sonnet; if the parent is Argon, `"pro"` routes to Gemini Pro)
   - `Prompt`: Provide the user's task requirements, any referenced task/specification files, and architectural constraints. Instruct the implementer to update `CHANGELOG.md` (and `docs/` if applicable), run `pnpm run format`, and leave changes uncommitted.
 - **Quota Fallback & User Override:**
-  - If the user explicitly requests Flash (e.g., _"use flash"_ or _"claude quota low"_), or if the `Model="pro"` invocation fails/errors due to usage quota or rate limits, automatically invoke `implementer` with `Model="flash"` (Gemini 3.8 Flash with **High** thinking level: `gemini-3.8-flash-high`).
+  - If the user explicitly requests Flash (e.g., _"use flash"_ or _"claude quota low"_), or if quota/rate-limit errors occur, invoke `implementer` with `Model="flash"` (Gemini 3.8 Flash with **High** thinking level: `gemini-3.8-flash-high`).
 
 ---
 

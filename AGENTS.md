@@ -59,7 +59,7 @@
 Whenever implementing a feature, refactor, or code task, follow the **3-Agent Pipeline** defined in [`.agents/rules/workflow.md`](./.agents/rules/workflow.md):
 
 1. **Architect & Orchestrator (Gemini 4 Argon):** Defines isolated `implementer` and `qa-tester` subagents (`enable_subagent_tools: false`), delegates implementation and verification, audits the final `git diff`, and commits approved changes.
-2. **Lead Implementer (`implementer` — `Model="pro"`: Sonnet with Medium thinking level (`sonnet-5.5-medium`), with automatic fallback to `Model="flash"`: Gemini 3.8 Flash with High thinking level (`gemini-3.8-flash-high`)):** Implements the user-provided task specification, updates `CHANGELOG.md` and `docs/`, runs `pnpm run format`, and leaves changes uncommitted for QA and review.
+2. **Lead Implementer (`implementer` — `Model="inherit"` when parent chat is switched to Claude Sonnet, or `Model="pro"`: Gemini Pro/Argon, with automatic fallback to `Model="flash"`: Gemini 3.8 Flash with High thinking level (`gemini-3.8-flash-high`)):** Implements the user-provided task specification, updates `CHANGELOG.md` and `docs/`, runs `pnpm run format`, and leaves changes uncommitted for QA and review.
 3. **QA Tester (`qa-tester` — `Model="flash"`: Gemini 3.8 Flash with High thinking level (`gemini-3.8-flash-high`)):** Executes the [`qa-verify` skill](./.agents/skills/qa-verify/SKILL.md) (`bash .agents/skills/qa-verify/scripts/verify.sh`) and loops with the Implementer until all checks pass with 0 errors.
 
 ### Rule 2: Code Quality Verification (Lint, Format, Typecheck)
