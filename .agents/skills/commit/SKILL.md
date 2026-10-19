@@ -20,12 +20,14 @@ This project uses Conventional Commits with optional scope:
 Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `style`, `perf`
 
 Examples from this repo:
+
 - `test(auth): add integration tests for all auth routes`
 - `fix: reset retried flag after token refresh so future 401s can auto-renew`
 - `refactor(gemini): move SYSTEM_INSTRUCTION to module-level`
 - `chore: add .prettierignore; add prettier, frontend eslint scripts`
 
 Rules:
+
 - Lowercase type and description
 - No period at the end
 - Scope is optional but preferred when the change is scoped to a subsystem

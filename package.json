@@ -1,0 +1,18 @@
+{
+  "name": "chrome-rag-knowledge-base-extension",
+  "version": "0.1.0",
+  "description": "Local-first Chrome extension knowledge assistant with semantic vector search",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "oxlint --no-error-on-unmatched-pattern",
+    "lint:fix": "oxlint --no-error-on-unmatched-pattern --fix"
+  },
+  "packageManager": "pnpm@12.14.0",
+  "devDependencies": {
+    "oxlint": "^1.88.0",
+    "prettier": "^3.9.10"
+  }
+}

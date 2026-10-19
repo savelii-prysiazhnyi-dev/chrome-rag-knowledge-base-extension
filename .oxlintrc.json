@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "unicorn", "oxc", "promise"],
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "builtin": true,
+    "browser": true,
+    "webextensions": true,
+    "serviceworker": true,
+    "worker": true
+  },
+  "ignorePatterns": ["node_modules", "dist", ".output", ".wxt"],
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    "promise/catch-or-return": "warn",
+    "promise/no-return-wrap": "error"
+  }
+}

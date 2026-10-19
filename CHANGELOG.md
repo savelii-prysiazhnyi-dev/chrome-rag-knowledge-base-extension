@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - **Project Specification (`v1.2.0`)** in `docs/SPECIFICATION.md`:
   - **Data Ownership & User-Controlled Storage Quota:** Added `.zip` (Markdown with YAML frontmatter via `turndown` + `fflate`) and `.json` exports, live storage dashboard (`navigator.storage.estimate()`), `< 500 MB` low physical disk guardrail, bulk cleanup tools with starred-article protection, and a Two-Layer Storage Gatekeeper (`50 MB` baseline cap with an explicit user prompt at 85%/100% to either allocate a custom disk space limit or clean up existing articles).
   - **Active Browsing & Contextual Features:** Added toolbar icon checkmark badge (`✓`), contextual Side Panel saved status banner (`[Update] [Remove]`), and proactive Related Past Reading cards.
@@ -15,10 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Organization & Exploration:** Added Default Reading Feed, domain filter pills with counts, Starred filter toggle, and Full-Screen Knowledge Manager (`options.html`).
   - **Ingestion Guardrails:** Enforced explicit 1-click user saves only (`Remember` button or `Alt + S`), non-destructive cloned-DOM Readability parsing, incognito protection, and sensitive-domain warnings.
   - **Optional RAG Synthesis:** Added on-device natural language Q&A specification using Chrome's built-in Prompt API (`window.ai` / Gemini Nano).
-  - **Architectural Decision Records (ADRs):** Documented ADRs for Two-Layer User-Controlled Disk Quota, Vertical Partitioning (`articles` vs. `article_contents`), Unified Relational + Vector IndexedDB storage, WXT over `@crxjs/vite-plugin`, and strict 3NF compliance (omitting `chunkCount`).
+- **Tooling Setup:**
+  - Configured `oxlint` (`.oxlintrc.json`) with React, TypeScript, Unicorn, Oxc, and Promise plugins, targeted at Chrome extension runtime environments (`browser`, `webextensions`, `serviceworker`, `worker`).
+  - Configured `prettier` (`.prettierrc`, `.prettierignore`) with single quotes and avoid arrow parens matching project style.
+  - Added `format`, `format:check`, `lint`, and `lint:fix` scripts in `package.json`.
+  - Added `.gitignore` ignoring dependencies, build artifacts, and environment files.
 - **Agent Workflow Documentation** in `AGENTS.md` enforcing `CHANGELOG.md` maintenance and the 3-phase `/commit` skill workflow.
 
 ### Changed
+
 - **Database Schema (`docs/SPECIFICATION.md`):**
   - Vertically partitioned full text and Markdown into a dedicated `article_contents` store to keep `articles` lightweight for UI feeds.
   - Changed `ChunkRecord.vector` from `number[]` to binary `Float32Array` with direct IndexedDB read/write from the Offscreen Document.
