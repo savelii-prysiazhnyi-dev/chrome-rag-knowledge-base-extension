@@ -26,7 +26,9 @@
   - [`.oxlintrc.json`](./.oxlintrc.json) — Oxlint configuration (`typescript`, `react`, `unicorn`, `oxc`, `promise` plugins + `webextensions` env).
   - [`.prettierrc`](./.prettierrc) & [`.prettierignore`](./.prettierignore) — Prettier code formatting rules and ignore paths.
   - [`.gitignore`](./.gitignore) — Git ignore rules for dependencies and build outputs.
-- **Agent Skills:**
+- **Agent Rules & Skills (`.agents/`):**
+  - [`.agents/rules/workflow.md`](./.agents/rules/workflow.md) — 3-Agent Development Pipeline Rule (Architect/Orchestrator -> Lead Implementer -> QA Tester).
+  - [`.agents/skills/qa-verify/SKILL.md`](./.agents/skills/qa-verify/SKILL.md) & [`.agents/skills/qa-verify/scripts/verify.sh`](./.agents/skills/qa-verify/scripts/verify.sh) — Automated QA verification skill and dynamic check runner.
   - [`.agents/skills/commit/SKILL.md`](./.agents/skills/commit/SKILL.md) — Conventional Commit workflow skill.
 
 ### Planned Source Layout (`src/`)
@@ -50,9 +52,17 @@
 
 ## 3. Mandatory Project Rules & Workflow
 
-### Rule 1: Code Quality Verification (Lint, Format, Typecheck)
+### Rule 1: 3-Agent Development Pipeline ([`.agents/rules/workflow.md`](./.agents/rules/workflow.md))
 
-After making any code or configuration changes, the agent **MUST** run the quality checks and verify they pass with **0 errors** before committing:
+Whenever implementing a feature, refactor, or code task, follow the **3-Agent Pipeline** defined in [`.agents/rules/workflow.md`](./.agents/rules/workflow.md):
+
+1. **Architect & Orchestrator (Gemini 4 Argon):** Defines isolated `implementer` and `qa-tester` subagents (`enable_subagent_tools: false`), delegates implementation and verification, audits the final `git diff`, and commits approved changes.
+2. **Lead Implementer (`implementer` — `Model="pro"` with automatic fallback to `Model="flash"`):** Implements the user-provided task specification, updates `CHANGELOG.md` and `docs/`, runs `pnpm run format`, and leaves changes uncommitted for QA and review.
+3. **QA Tester (`qa-tester` — `Model="flash"`):** Executes the [`qa-verify` skill](./.agents/skills/qa-verify/SKILL.md) (`bash .agents/skills/qa-verify/scripts/verify.sh`) and loops with the Implementer until all checks pass with 0 errors.
+
+### Rule 2: Code Quality Verification (Lint, Format, Typecheck)
+
+After making any code or configuration changes, all quality checks executed by [`qa-verify`](./.agents/skills/qa-verify/SKILL.md) **MUST** pass with **0 errors** before committing:
 
 1. **Linting (`oxlint`):**
    ```bash
@@ -69,14 +79,14 @@ After making any code or configuration changes, the agent **MUST** run the quali
    ```
    _(Run `pnpm run typecheck` / `pnpm exec tsc --noEmit` once TypeScript configuration is initialized in Phase 1)._
 
-### Rule 2: Architectural & Subsystem Documentation in [`docs/`](./docs/)
+### Rule 3: Architectural & Subsystem Documentation in [`docs/`](./docs/)
 
 Whenever a major subsystem, data flow, or non-trivial architectural decision is designed or implemented, the agent **MUST** create or update a dedicated Markdown document in [`docs/`](./docs/) (for example: `docs/storage-engine.md`, `docs/embedding-pipeline.md`, `docs/hybrid-search.md`, `docs/messaging-protocol.md`).
 
 - **Purpose:** These documents act as both **long-term architectural memory** for AI agents (explaining _why_ decisions were made and _how_ they are implemented) and **deep-dive learning guides** for the developer.
-- Whenever a new doc is added to `docs/`, link it in **Section 3 (Project Map)** of this [`AGENTS.md`](./AGENTS.md) file.
+- Whenever a new doc is added to `docs/`, link it in **Section 2 (Project Map)** of this [`AGENTS.md`](./AGENTS.md) file.
 
-### Rule 3: Maintaining [`CHANGELOG.md`](./CHANGELOG.md) & Semantic Versioning
+### Rule 4: Maintaining [`CHANGELOG.md`](./CHANGELOG.md) & Semantic Versioning
 
 1. **Changelog Maintenance:** Every notable addition, change, fix, or architectural decision must be recorded in [`CHANGELOG.md`](./CHANGELOG.md) under `[Unreleased]` (or the active release heading) following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 2. **Semantic Versioning (SemVer):** Manage the extension version in [`package.json`](./package.json) (and manifest) strictly following [SemVer 2.0.0](https://semver.org/spec/v2.0.0.html):
@@ -84,7 +94,7 @@ Whenever a major subsystem, data flow, or non-trivial architectural decision is 
    - `MINOR`: Backwards-compatible new features or completed roadmap phases (e.g., `0.1.0` -> `0.2.0`).
    - `PATCH`: Backwards-compatible bug fixes, performance tuning, or documentation refinements.
 
-### Rule 4: Automatic Commits via the `commit` Skill ([`.agents/skills/commit/SKILL.md`](./.agents/skills/commit/SKILL.md))
+### Rule 5: Automatic Commits via the `commit` Skill ([`.agents/skills/commit/SKILL.md`](./.agents/skills/commit/SKILL.md))
 
 Whenever the agent completes a change to the repository, it **MUST** commit the work using the conventions in [`.agents/skills/commit/SKILL.md`](./.agents/skills/commit/SKILL.md):
 
