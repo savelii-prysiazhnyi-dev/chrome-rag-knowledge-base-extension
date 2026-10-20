@@ -1,5 +1,52 @@
 import { MODEL_ID, type FeatureExtractor } from './embedder';
 
+interface MinimalGpuDevice {
+  destroy?: () => void;
+}
+
+interface MinimalGpuAdapter {
+  requestDevice: () => Promise<MinimalGpuDevice | null>;
+}
+
+interface MinimalGpu {
+  requestAdapter: () => Promise<MinimalGpuAdapter | null>;
+}
+
+/**
+ * Probes whether a functional WebGPU adapter and device can actually be acquired.
+ *
+ * Checking `'gpu' in navigator` is insufficient: on Linux/Chromium without a
+ * hardware WebGPU adapter enabled, `navigator.gpu` exists but `requestAdapter()`
+ * resolves to `null`. Calling `pipeline(..., { device: 'webgpu' })` in that state
+ * causes ONNX Runtime Web to throw `Failed to get GPU adapter` inside
+ * `@huggingface/transformers`'s internal `webInitChain = webInitChain.then(load)`,
+ * which permanently rejects `webInitChain` and poisons any subsequent `{ device: 'wasm' }`
+ * fallback call.
+ */
+export async function hasUsableWebGpu(): Promise<boolean> {
+  try {
+    if (typeof navigator === 'undefined' || !('gpu' in navigator)) {
+      return false;
+    }
+    const gpu = (navigator as Navigator & { gpu?: MinimalGpu }).gpu;
+    if (!gpu || typeof gpu.requestAdapter !== 'function') {
+      return false;
+    }
+    const adapter = await gpu.requestAdapter();
+    if (!adapter) {
+      return false;
+    }
+    const device = await adapter.requestDevice();
+    if (!device) {
+      return false;
+    }
+    device.destroy?.();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Loads the real Transformers.js pipeline. Browser-only (offscreen document);
  * never imported by unit tests. ONNX Runtime WASM/.mjs files are bundled under
@@ -17,10 +64,10 @@ export async function loadTransformersExtractor(): Promise<FeatureExtractor> {
     onnx.wasm.proxy = false;
   }
 
-  const attempts: Array<'webgpu' | 'wasm'> =
-    typeof navigator !== 'undefined' && 'gpu' in navigator
-      ? ['webgpu', 'wasm']
-      : ['wasm'];
+  const useWebGpu = await hasUsableWebGpu();
+  const attempts: Array<'webgpu' | 'wasm'> = useWebGpu
+    ? ['webgpu', 'wasm']
+    : ['wasm'];
   let lastErr: unknown;
   for (const device of attempts) {
     try {

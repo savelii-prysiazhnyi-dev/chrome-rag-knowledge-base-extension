@@ -58,10 +58,22 @@ export default defineBackground(() => {
 
   const coordinator = createCoordinator({
     getTab: tabId => chrome.tabs.get(tabId),
-    extractPage: tabId =>
-      chrome.tabs.sendMessage(tabId, {
-        type: 'EXTRACT_PAGE',
-      } satisfies ExtensionMessage) as Promise<ExtractPageResponse | undefined>,
+    extractPage: async tabId => {
+      const msg: ExtensionMessage = { type: 'EXTRACT_PAGE' };
+      try {
+        return (await chrome.tabs.sendMessage(tabId, msg)) as
+          ExtractPageResponse | undefined;
+      } catch {
+        // Tab was likely open before the extension was installed or reloaded.
+        // Dynamically inject the content script and retry once.
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          files: ['content-scripts/content.js'],
+        });
+        return (await chrome.tabs.sendMessage(tabId, msg)) as
+          ExtractPageResponse | undefined;
+      }
+    },
     hashUrl,
     estimatePayloadBytes,
     checkStorageQuota,
@@ -86,7 +98,7 @@ export default defineBackground(() => {
   chrome.commands.onCommand.addListener((command: string) => {
     if (command === 'remember-page') {
       void saveActiveTab().then(r =>
-        console.log('[Second Brain] remember-page result:', r.status),
+        console.log('[Second Brain] remember-page result:', r),
       );
     }
   });

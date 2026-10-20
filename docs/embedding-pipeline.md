@@ -17,7 +17,11 @@ Runs in the **offscreen document** (`src/entrypoints/offscreen/main.ts`), which 
 
 ## WebGPU vs WASM
 
-`loadTransformersExtractor` tries `webgpu` (fp32) when `navigator.gpu` exists, falling back to `wasm` (q8, 1 thread; no cross-origin isolation means no `SharedArrayBuffer`) if initialization fails. ONNX Runtime `.wasm`/`.mjs` are bundled under `ort/` by `wxt.config.ts` (`build:publicAssets` hook) and located via `env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL('ort/')`. MV3 CSP forbids remote code, and the manifest already allows `'wasm-unsafe-eval'`.
+`loadTransformersExtractor` probes for a usable WebGPU adapter and device via `hasUsableWebGpu()` (`navigator.gpu.requestAdapter()` → `adapter.requestDevice()` → `device.destroy()`) **before** calling `pipeline()`.
+
+Checking `'gpu' in navigator` alone is insufficient: on Linux/Chromium without a hardware WebGPU adapter enabled, `navigator.gpu` exists on `Navigator` while `navigator.gpu.requestAdapter()` resolves to `null` (`No available adapters.`). If `pipeline('feature-extraction', MODEL_ID, { device: 'webgpu' })` is invoked in that state, ONNX Runtime Web throws `Error: Failed to get GPU adapter`. Inside `@huggingface/transformers` (`src/backends/onnx.js`), session creation is serialized on a module-scoped promise chain (`webInitChain = webInitChain.then(load)`) without a rejection recovery handler—meaning a single `'webgpu'` failure permanently rejects `webInitChain` and causes any subsequent `{ device: 'wasm' }` fallback call to immediately re-throw the cached `[webgpu]` error without ever attempting WASM initialization.
+
+By gating `'webgpu'` behind `hasUsableWebGpu()`, environments without a functional GPU adapter go directly to `wasm` (`dtype: 'q8'`, 1 thread; no cross-origin isolation means no `SharedArrayBuffer`) and never poison `webInitChain`. All ONNX Runtime Web `.wasm`/`.mjs` loader variants (`ort-wasm*`, including `.asyncify`, `.jspi`, and `.jsep`) are bundled under `ort/` by `wxt.config.ts` (`build:publicAssets` hook) and located via `env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL('ort/')`. MV3 CSP forbids remote code, and the manifest allows `'wasm-unsafe-eval'`.
 
 ## Model weight caching (only network access)
 
