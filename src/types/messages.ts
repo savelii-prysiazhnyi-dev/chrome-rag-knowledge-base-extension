@@ -102,6 +102,13 @@ export interface StorageQuotaStatus {
   modelCacheUsageBytes?: number;
 }
 
+export interface SearchResultItem {
+  article: ArticleRecord;
+  bestSnippet: string;
+  chunkIndex: number;
+  score: number;
+}
+
 // Internal IPC Messaging Protocol (chrome.runtime.sendMessage)
 export type ExtensionMessage =
   | { type: 'SAVE_ACTIVE_TAB' }
@@ -145,12 +152,7 @@ export type ExtensionMessage =
   | {
       type: 'SEARCH_RESULTS';
       payload: {
-        results: Array<{
-          article: ArticleRecord;
-          bestSnippet: string;
-          chunkIndex: number;
-          score: number;
-        }>;
+        results: SearchResultItem[];
       };
     }
   | {

@@ -38,37 +38,52 @@ sequenceDiagram
 
 ---
 
-## 2. Side Panel Companion UI (`src/entrypoints/sidepanel/App.tsx`)
+## 2. Side Panel Companion UI (`src/entrypoints/sidepanel/`)
 
-The Side Panel acts as an always-available reading companion synchronized with the user's active browser tab:
+The Side Panel acts as an always-available reading companion synchronized with the user's active browser tab. Business logic and UI state are decoupled into specialized custom hooks and focused presentation components:
 
-- **Contextual Active Tab Banner:**
-  - Listens to `chrome.tabs.onActivated`, `chrome.tabs.onUpdated`, and `ARTICLE_INDEXED`.
-  - Queries `CHECK_TAB_STATUS` (canonicalized URL lookup against the unique `by_url` index).
-  - **Unsaved State:** Displays a 1-click **`[Remember Alt+S]`** CTA and surfaces structured extraction guardrail errors (`BLOCKED_URL`, `NOT_READABLE`, `TOO_SHORT`, `incognito_blocked`).
-  - **Saved State:** Displays a green indicator, save date, reading time, **`[Update]`** button (atomic re-extraction preserving `savedAt` and `isStarred`), and **`[Remove]`** button (cascading delete + badge clear).
-- **Proactive "Related Past Reading" Strip:**
-  - Automatically dispatches `FIND_RELATED_ARTICLES` using the active tab's title (excluding the current tab's `articleId`) and displays up to 3 semantically related articles from the user's local library.
-- **Debounced Hybrid Search vs. Library Feed:**
-  - Input is debounced at `250 ms`. When empty, renders the reverse-chronological Library Feed with `All`, `Starred`, and dynamic `siteName (count)` filter pills.
-  - When a query is active, switches to scored passage snippets (`bestSnippet`) with relevance badges (`% match`). Clicking a result focuses or opens the target tab and dispatches `SCROLL_AND_HIGHLIGHT` to the Content Script.
-- **Storage Quota Gatekeeper Modal:**
-  - Opens automatically upon receiving `STORAGE_QUOTA_EXCEEDED` (or manually from the footer quota bar).
-  - **Path 1 (Allocate Disk Space):** Lets the user set a custom MB limit (defaulting to `250 MB`), requests Chrome's optional `unlimitedStorage` permission when expanding above `50 MB`, updates `StorageSettings.maxStorageBytes`, and automatically retries a blocked save. Strictly disabled when `isLowPhysicalDisk` (`< 500 MB` free on host drive).
-  - **Path 2 (Clean Up Space):** Offers a 1-click shortcut to purge unstarred articles older than 30 days (`bulkDeleteUnstarred`) or open the Full-Screen Knowledge Manager.
+### Custom Hooks
+
+- **`src/hooks/useStorageQuota.ts`:** Manages `quotaStatus` (`checkStorageQuota`), `refreshQuota`, and `updateCap(newCapBytes)` (with optional `unlimitedStorage` permission requests).
+- **`src/entrypoints/sidepanel/hooks/useActiveTab.ts`:** Detects active tab ID, URL, title, and queries `CHECK_TAB_STATUS`. Manages `rememberTab()`, `removeTab()`, and `updateTab()`. Subscribes to `chrome.tabs.onActivated`, `chrome.tabs.onUpdated`, and `ARTICLE_INDEXED` / `STORAGE_QUOTA_EXCEEDED` messages. Exposes `isSaved`, `isSaving`, `saveError`, and tab metadata.
+- **`src/entrypoints/sidepanel/hooks/useSearchAndRelated.ts`:** Manages `searchQuery`, 250ms debounced search, `isSearching`, and `searchResults`. Manages proactive `relatedArticles` via `FIND_RELATED_ARTICLES`. Handles click-to-jump `handleSnippetClick` (opening/focusing tab and sending `SCROLL_AND_HIGHLIGHT`).
+- **`src/entrypoints/sidepanel/hooks/useLibraryArticles.ts`:** Manages `articles`, `domainCounts`, `filter` (`all` vs `starred`), `domainFilter`, `toggleStar`, `deleteArticle`, and `quickCleanupOldUnstarred`.
+
+### Modular Presentation Components (`src/entrypoints/sidepanel/components/`)
+
+- `SidePanelHeader.tsx`: Brand, logo, and full-screen Knowledge Manager launcher button.
+- `ActiveTabBanner.tsx`: Saved status dot, date, reading time, `[Update]` and `[Remove]` buttons vs `[Remember Alt+S]`, saving spinner, and error banner.
+- `RelatedArticlesStrip.tsx`: Compact cards for proactive related past reading with relevance match percentages.
+- `SearchBar.tsx`: Input with search icon, clear button.
+- `DomainFilterPills.tsx`: `All`, `Starred`, dynamic domain pills with counts.
+- `ArticleCard.tsx`: Individual card in library feed (favicon, title, siteName, relative date, excerpt, reading time, star toggle, delete).
+- `SearchResultCard.tsx`: Scored snippet card (% match badge, title, domain, highlighted snippet passage, click-to-jump).
+- `StorageFooter.tsx`: Quota progress bar, usage text, "Export Data" button.
+- `StorageQuotaModal.tsx`: Quota warning/exceeded modal (allocate custom MB vs clean up space).
+- `App.tsx`: Concise, declarative orchestrator composing the hooks and components (~240 lines).
 
 ---
 
-## 3. Full-Screen Knowledge Manager (`src/entrypoints/options/App.tsx`)
+## 3. Full-Screen Knowledge Manager (`src/entrypoints/options/`)
 
 The Options page (`options.html`) provides high-density management for larger libraries:
 
-- **3NF On-Demand Content Loading:**
-  - The main table loads only `ArticleRecord` metadata from the `articles` store so rendering hundreds of rows remains instantaneous.
-  - Full distilled Markdown (`ArticleContentRecord`) is fetched from `article_contents` **strictly on demand** when the user clicks **"Read Distilled Markdown"** (preview modal) or triggers a full archive export.
-  - Per-article chunk counts for JSON backups are queried via the `by_articleId` B-tree index (`getArticleChunkCount`) in $O(\log N)$ time without deserializing vector chunks.
-- **Multi-Select & Bulk Unstarred Cleanup:**
-  - Supports multi-row checkbox selection for targeted batch deletion (`deleteArticles`) alongside a Bulk Cleanup drawer filtering by age (`All ages`, `> 7d`, `> 30d`, `> 90d`) and domain while strictly protecting starred articles (`isStarred === true`).
+### Custom Hook (`src/entrypoints/options/hooks/useKnowledgeManager.ts`)
+
+- Manages table filtering (`searchQuery`, `selectedDomain`, `starredOnly`), multi-selection `selectedIds` (`toggleSelectRow`, `toggleSelectAllVisible`, `clearSelection`), `deleteSelectedArticles`, and `deleteArticlesByIds`.
+- Manages bulk unstarred cleanup drawer state and execution (`handleBulkCleanup`).
+- Manages `.zip` and `.json` export progress (`handleExportZip`, `handleExportJson`).
+- Manages Markdown preview modal lifecycle (`previewArticle`, `previewContent`, `isPreviewLoading`, `openPreview`, `closePreview`).
+
+### Modular Presentation Components (`src/entrypoints/options/components/`)
+
+- `OptionsHeader.tsx`: Title, subtitle, and 1-click Markdown (`.zip`) and JSON export buttons.
+- `StorageOverviewCard.tsx`: Quota progress bar, article & vector chunk count, physical disk guardrail warning, quick cap presets (`50 MB`–`1 GB`), custom MB cap input, and model cache indicator badge.
+- `BulkCleanupDrawer.tsx`: Age & domain filter selectors, protected starred articles notice, and cleanup trigger button.
+- `ArticlesTable.tsx`: Table layout, search/domain/starred filter controls, multi-select checkboxes, "Delete Selected" button, table header, rows, and empty state.
+- `ArticleTableRow.tsx`: Individual row in the table with checkbox, title, URL, domain, date, reading time, status, star toggle, Markdown preview button, external link, delete.
+- `MarkdownPreviewModal.tsx`: Reads `getArticleContent(articleId)` on demand and renders clean Markdown preview in a modal dialog with 1-click clipboard copy and close actions.
+- `App.tsx`: Clean orchestrator composing `useStorageQuota` and `useKnowledgeManager` (~130 lines).
 
 ---
 

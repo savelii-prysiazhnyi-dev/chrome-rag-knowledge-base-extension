@@ -1,0 +1,63 @@
+import { useCallback, useEffect, useState } from 'react';
+import { checkStorageQuota, updateStorageCap } from '../db';
+import type { StorageQuotaStatus } from '../types/messages';
+
+export interface UseStorageQuotaReturn {
+  quotaStatus: StorageQuotaStatus | null;
+  refreshQuota: () => Promise<StorageQuotaStatus | null>;
+  updateCap: (newCapBytes: number) => Promise<void>;
+  isLoading: boolean;
+}
+
+/**
+ * Shared custom hook for tracking and updating the user-controlled storage quota.
+ */
+export function useStorageQuota(): UseStorageQuotaReturn {
+  const [quotaStatus, setQuotaStatus] = useState<StorageQuotaStatus | null>(
+    null,
+  );
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const refreshQuota =
+    useCallback(async (): Promise<StorageQuotaStatus | null> => {
+      try {
+        const status = await checkStorageQuota();
+        setQuotaStatus(status);
+        return status;
+      } catch (err) {
+        console.error('[useStorageQuota] Failed to check quota:', err);
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    }, []);
+
+  const updateCap = useCallback(
+    async (newCapBytes: number): Promise<void> => {
+      const mb = newCapBytes / (1024 * 1024);
+      if (
+        mb > 50 &&
+        typeof chrome !== 'undefined' &&
+        chrome.permissions?.request
+      ) {
+        await chrome.permissions
+          .request({ permissions: ['unlimitedStorage'] })
+          .catch(() => false);
+      }
+      await updateStorageCap(newCapBytes);
+      await refreshQuota();
+    },
+    [refreshQuota],
+  );
+
+  useEffect(() => {
+    void Promise.resolve().then(() => refreshQuota());
+  }, [refreshQuota]);
+
+  return {
+    quotaStatus,
+    refreshQuota,
+    updateCap,
+    isLoading,
+  };
+}

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Refactored
+
+- **Modular React Architecture & Custom Hooks (`sidepanel` & `options`):**
+  - Outsourced business logic from monolithic `App.tsx` files into specialized custom hooks:
+    - `src/hooks/useStorageQuota.ts`: Shared storage quota tracking, polling, and cap expansion with optional `unlimitedStorage` permission requests.
+    - `src/entrypoints/sidepanel/hooks/useActiveTab.ts`: Active tab URL/title tracking, `CHECK_TAB_STATUS` verification, `rememberTab()`, `removeTab()`, `updateTab()`, and message subscription management.
+    - `src/entrypoints/sidepanel/hooks/useSearchAndRelated.ts`: 250ms debounced hybrid search, proactive related articles querying, and `SCROLL_AND_HIGHLIGHT` click-to-jump tab navigation.
+    - `src/entrypoints/sidepanel/hooks/useLibraryArticles.ts`: Library feed retrieval, domain counts, starred/domain filtering, star toggles, and single/bulk deletions.
+    - `src/entrypoints/options/hooks/useKnowledgeManager.ts`: Full data management, table search/domain/starred filtering, multi-row selection, bulk unstarred cleanup drawer, `.zip` / `.json` export orchestration, and on-demand Markdown preview modal loading.
+  - Decomposed Side Panel UI into 9 focused components in `src/entrypoints/sidepanel/components/`: `SidePanelHeader`, `ActiveTabBanner`, `RelatedArticlesStrip`, `SearchBar`, `DomainFilterPills`, `ArticleCard`, `SearchResultCard`, `StorageFooter`, and `StorageQuotaModal`, reducing `sidepanel/App.tsx` to a clean ~240-line orchestrator.
+  - Decomposed Knowledge Manager UI into 6 focused components in `src/entrypoints/options/components/`: `OptionsHeader`, `StorageOverviewCard`, `BulkCleanupDrawer`, `ArticlesTable`, `ArticleTableRow`, and `MarkdownPreviewModal` (with 1-click clipboard copy support), reducing `options/App.tsx` to a clean ~130-line orchestrator.
+  - Extracted shared formatting utilities to `src/lib/utils/format.ts` (`formatBytesToMB`, `formatShortDate`, `formatDate`, `todayDateStamp`) and exported `SearchResultItem` interface in `src/types/messages.ts`.
+
 ### Added
 
 - **Phase 5: Side Panel UI, Quota Prompt Modal, Background Search/Badge Routing & Full-Screen Knowledge Manager:**
