@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Continuous Integration (GitHub Actions):** Added `.github/workflows/ci.yml` running formatting check (`prettier`), lint (`oxlint`), typecheck (`tsc`), unit tests (`vitest`), and extension build (`wxt`) on push and pull request events targeting `master` and `main` branches using Node 22 and pnpm 12.14.0.
+
 - **Phase 4: Offscreen Embedding Engine, Hybrid Search & Background Coordinator:**
   - Added dependency `@huggingface/transformers` (model `Xenova/all-MiniLM-L6-v2`, mean pooling, normalized); `pnpm-workspace.yaml` disables unneeded native build scripts (`onnxruntime-node`, `protobufjs`).
   - `wxt.config.ts` copies ONNX Runtime `.wasm`/`.mjs` files into `ort/` in the build (no CDN); `env.backends.onnx.wasm.wasmPaths` points at them. WebGPU preferred, WASM fallback.
