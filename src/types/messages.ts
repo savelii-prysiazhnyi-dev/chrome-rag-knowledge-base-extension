@@ -129,8 +129,8 @@ export type ExtensionMessage =
   | { type: 'ARTICLE_INDEXED'; payload: { articleId: string; url: string } }
   | {
       type: 'SEARCH_QUERY';
-      /** Routing: only the offscreen document handles this message. */
-      target: 'offscreen';
+      /** Routing: when set to 'offscreen', handled directly by offscreen document; otherwise background ensures offscreen and forwards. */
+      target?: 'offscreen';
       payload: {
         query: string;
         topK?: number;
@@ -151,6 +151,8 @@ export type ExtensionMessage =
     }
   | {
       type: 'FIND_RELATED_ARTICLES';
+      /** Routing: when set to 'offscreen', handled directly by offscreen document; otherwise background ensures offscreen and forwards. */
+      target?: 'offscreen';
       payload: { text: string; excludeArticleId?: string; topK?: number };
     }
   | { type: 'SCROLL_AND_HIGHLIGHT'; payload: { snippet: string } }

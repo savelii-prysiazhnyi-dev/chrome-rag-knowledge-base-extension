@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 5: Side Panel UI, Quota Prompt Modal, Background Search/Badge Routing & Full-Screen Knowledge Manager:**
+  - Installed `fflate` in `dependencies` and implemented pure client-side export utilities in `src/lib/export/index.ts` (`formatArticleMarkdownWithFrontmatter`, `sanitizeExportFilename`, `buildMarkdownZipArchive`, `buildJsonExportPayload`, `triggerBrowserDownload`) with 5 unit tests in `src/lib/export/__tests__/export.test.ts`.
+  - Enhanced `src/entrypoints/background/index.ts` with on-demand Offscreen Document creation and message forwarding for `SEARCH_QUERY` and `FIND_RELATED_ARTICLES`, live `✓` toolbar badge synchronization on `chrome.tabs.onActivated` and `chrome.tabs.onUpdated`, and `DELETE_ARTICLES` / `UPDATE_STORAGE_CAP` message handlers.
+  - Added `FIND_RELATED_ARTICLES` handler and empty-query guards in `src/entrypoints/offscreen/main.ts`.
+  - Built full reactive Side Panel UI (`src/entrypoints/sidepanel/App.tsx`) featuring the Contextual Active Tab Banner (`Remember Alt+S`, `Update`, `Remove`, and inline guardrail error messages), Proactive "Related Past Reading" strip, 250ms debounced Hybrid Search with click-to-jump `SCROLL_AND_HIGHLIGHT` dispatch, Library Reading Feed with `All`/`Starred`/Domain filter pills, live Storage Quota footer, and interactive Storage Quota Gatekeeper Modal (disk allocation + optional `unlimitedStorage` permission request or 1-click 30-day unstarred cleanup).
+  - Built Full-Screen Knowledge Manager (`src/entrypoints/options/App.tsx`) featuring live Storage Budget & Quota Control card with quick cap presets (`50 MB`–`1 GB`) and custom MB editor, 1-click Markdown (`.zip`) and JSON export buttons, Bulk Unstarred Cleanup drawer (by age and domain with starred protection), searchable/filterable multi-select articles table, and on-demand 3NF Markdown preview modal.
+  - Added architectural documentation in `docs/ui-and-export-architecture.md` and linked it in `AGENTS.md`.
+
 - **Continuous Integration (GitHub Actions):** Added `.github/workflows/ci.yml` running formatting check (`prettier`), lint (`oxlint`), typecheck (`tsc`), unit tests (`vitest`), and extension build (`wxt`) on push and pull request events targeting `master` and `main` branches using Node 22 and pnpm 12.14.0.
 
 - **Phase 4: Offscreen Embedding Engine, Hybrid Search & Background Coordinator:**

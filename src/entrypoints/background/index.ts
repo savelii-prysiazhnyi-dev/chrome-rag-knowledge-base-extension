@@ -5,8 +5,10 @@ import type {
 } from '../../types/messages';
 import {
   checkStorageQuota,
+  deleteArticles,
   estimatePayloadBytes,
   getArticleByUrl,
+  updateStorageCap,
   upsertArticleWithContent,
 } from '../../db';
 import { canonicalizeUrl, hashUrl } from '../../lib/content';
@@ -40,6 +42,53 @@ async function ensureOffscreenDocument(): Promise<void> {
       });
   }
   await offscreenCreating;
+}
+
+/**
+ * Synchronizes the toolbar action badge ('✓' when indexed, '' otherwise) for a given tab.
+ */
+async function syncTabBadge(tabId: number, url?: string): Promise<void> {
+  if (!chrome.action?.setBadgeText) return;
+
+  if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+    await chrome.action.setBadgeText({ tabId, text: '' }).catch(() => {});
+    return;
+  }
+
+  try {
+    const canonical = canonicalizeUrl(url);
+    const article = await getArticleByUrl(canonical);
+    const isIndexed = article?.status === 'indexed';
+    if (isIndexed && chrome.action.setBadgeBackgroundColor) {
+      await chrome.action
+        .setBadgeBackgroundColor({ tabId, color: '#10b981' })
+        .catch(() => {});
+    }
+    await chrome.action
+      .setBadgeText({ tabId, text: isIndexed ? '✓' : '' })
+      .catch(() => {});
+  } catch {
+    await chrome.action.setBadgeText({ tabId, text: '' }).catch(() => {});
+  }
+}
+
+/**
+ * Refreshes toolbar badges across all open browser tabs.
+ */
+async function syncAllTabBadges(): Promise<void> {
+  if (!chrome.tabs?.query) return;
+  try {
+    const tabs = await chrome.tabs.query({});
+    await Promise.all(
+      tabs
+        .filter(
+          (t): t is chrome.tabs.Tab & { id: number } => t.id !== undefined,
+        )
+        .map(t => syncTabBadge(t.id, t.url)),
+    );
+  } catch {
+    // Ignore tab query errors
+  }
 }
 
 export default defineBackground(() => {
@@ -103,13 +152,31 @@ export default defineBackground(() => {
     }
   });
 
+  // Tab lifecycle listeners for live ✓ badge synchronization
+  if (chrome.tabs?.onActivated) {
+    chrome.tabs.onActivated.addListener(({ tabId }) => {
+      chrome.tabs
+        .get(tabId)
+        .then(tab => syncTabBadge(tabId, tab.url))
+        .catch(() => {});
+    });
+  }
+
+  if (chrome.tabs?.onUpdated) {
+    chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+      if (changeInfo.status === 'complete' || changeInfo.url) {
+        void syncTabBadge(tabId, changeInfo.url ?? tab.url);
+      }
+    });
+  }
+
   chrome.runtime.onMessage.addListener(
     (
       message: ExtensionMessage & { target?: string },
       _sender: chrome.runtime.MessageSender,
       sendResponse: (response?: unknown) => void,
     ) => {
-      // Messages routed to the offscreen document are never handled here.
+      // Messages explicitly routed to the offscreen document are ignored by background.
       if (message.target === 'offscreen') return false;
 
       switch (message.type) {
@@ -134,27 +201,58 @@ export default defineBackground(() => {
           return true;
         }
 
+        case 'SEARCH_QUERY':
+        case 'FIND_RELATED_ARTICLES': {
+          (async () => {
+            try {
+              await ensureOffscreenDocument();
+              const response: unknown = await chrome.runtime.sendMessage({
+                ...message,
+                target: 'offscreen',
+              });
+              sendResponse(
+                response ?? {
+                  type: 'SEARCH_RESULTS',
+                  payload: { results: [] },
+                },
+              );
+            } catch (err) {
+              console.error(
+                '[Second Brain] Offscreen search routing failed:',
+                err,
+              );
+              sendResponse({
+                type: 'SEARCH_RESULTS',
+                payload: { results: [] },
+              });
+            }
+          })();
+          return true;
+        }
+
+        case 'DELETE_ARTICLES': {
+          deleteArticles(message.payload.articleIds)
+            .then(async deletedCount => {
+              await syncAllTabBadges();
+              sendResponse({ ok: true, deletedCount });
+            })
+            .catch((e: unknown) =>
+              sendResponse({ ok: false, error: String(e) }),
+            );
+          return true;
+        }
+
+        case 'UPDATE_STORAGE_CAP': {
+          updateStorageCap(message.payload.newMaxStorageBytes)
+            .then(settings => sendResponse({ ok: true, settings }))
+            .catch((e: unknown) =>
+              sendResponse({ ok: false, error: String(e) }),
+            );
+          return true;
+        }
+
         case 'ARTICLE_INDEXED': {
-          chrome.tabs
-            .query({})
-            .then(tabs =>
-              Promise.all(
-                tabs
-                  .filter(
-                    t =>
-                      t.id !== undefined &&
-                      t.url &&
-                      canonicalizeUrl(t.url) === message.payload.url,
-                  )
-                  .map(t =>
-                    chrome.action.setBadgeText({
-                      tabId: t.id as number,
-                      text: '✓',
-                    }),
-                  ),
-              ),
-            )
-            .catch(() => {});
+          void syncAllTabBadges();
           return false;
         }
 

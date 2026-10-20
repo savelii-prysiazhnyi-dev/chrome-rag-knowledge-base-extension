@@ -67,6 +67,13 @@ chrome.runtime.onMessage.addListener(
         const { query, topK, domainFilter, starredOnly } = message.payload;
         (async () => {
           try {
+            if (!query?.trim()) {
+              sendResponse({
+                type: 'SEARCH_RESULTS',
+                payload: { results: [] },
+              });
+              return;
+            }
             const queryVector = await embedder.embedOne(query);
             const db = await getDB();
             const [chunks, articles] = await Promise.all([
@@ -85,6 +92,45 @@ chrome.runtime.onMessage.addListener(
             sendResponse({ type: 'SEARCH_RESULTS', payload: { results } });
           } catch (err) {
             console.error('[Second Brain Offscreen] Search failed:', err);
+            sendResponse({ type: 'SEARCH_RESULTS', payload: { results: [] } });
+          }
+        })();
+        return true;
+      }
+
+      case 'FIND_RELATED_ARTICLES': {
+        const { text, excludeArticleId, topK = 3 } = message.payload;
+        (async () => {
+          try {
+            if (!text?.trim()) {
+              sendResponse({
+                type: 'SEARCH_RESULTS',
+                payload: { results: [] },
+              });
+              return;
+            }
+            const queryVector = await embedder.embedOne(text);
+            const db = await getDB();
+            const [chunks, allArticles] = await Promise.all([
+              getAllChunks(),
+              db.getAll('articles'),
+            ]);
+            const articles = excludeArticleId
+              ? allArticles.filter(a => a.id !== excludeArticleId)
+              : allArticles;
+            const results = rankChunksToArticles({
+              queryVector,
+              queryText: text,
+              chunks,
+              articles,
+              topK,
+            });
+            sendResponse({ type: 'SEARCH_RESULTS', payload: { results } });
+          } catch (err) {
+            console.error(
+              '[Second Brain Offscreen] Find related articles failed:',
+              err,
+            );
             sendResponse({ type: 'SEARCH_RESULTS', payload: { results: [] } });
           }
         })();
