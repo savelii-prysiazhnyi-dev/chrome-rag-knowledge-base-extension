@@ -98,3 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Moved `unlimitedStorage` from required `permissions` to `optional_permissions`.
 - **Sequence Diagram (`docs/sample-user-flow.mmd`):**
   - Updated user flow to reflect manual-only saving, storage quota gatekeeper prompt, direct IndexedDB `Float32Array` writes, hybrid search, and in-page highlighting.
+
+### Fixed
+
+- **ONNX Runtime Web WASM Loader Assets:** Dynamically bundle all ONNX Runtime Web WASM and loader variants (`ort-wasm*`, including `.asyncify.mjs`, `.asyncify.wasm`, `.jspi.mjs`, `.jspi.wasm`, `.jsep.*`, and `.wasm`) in `wxt.config.ts`. Fixes `net::ERR_FILE_NOT_FOUND` when extension pages without cross-origin isolation fallback to the single-threaded asyncify loader in the Offscreen Document.

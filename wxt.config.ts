@@ -1,5 +1,6 @@
 import { defineConfig } from 'wxt';
 import tailwindcss from '@tailwindcss/vite';
+import { readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 
@@ -9,12 +10,8 @@ const requireFromTransformers = createRequire(
 );
 const ortDist = dirname(requireFromTransformers.resolve('onnxruntime-web'));
 // Bundle ONNX Runtime WASM + loader locally (MV3 CSP forbids remote code).
-const ORT_ASSETS = [
-  'ort-wasm-simd-threaded.jsep.mjs',
-  'ort-wasm-simd-threaded.jsep.wasm',
-  'ort-wasm-simd-threaded.mjs',
-  'ort-wasm-simd-threaded.wasm',
-];
+// Include all builds (standard, asyncify, jspi, jsep) so single-threaded non-isolated extension pages can load.
+const ORT_ASSETS = readdirSync(ortDist).filter(f => f.startsWith('ort-wasm'));
 
 export default defineConfig({
   srcDir: 'src',
