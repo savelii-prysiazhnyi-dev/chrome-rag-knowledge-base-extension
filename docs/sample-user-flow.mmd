@@ -7,9 +7,12 @@ sequenceDiagram
         participant DB as Shared IndexedDB (articles / contents / chunks)
         participant SidePanel as Side Panel UI (React)
 
-        User->>Page: Clicks "Remember" (or presses Alt+S)
+        User->>SW: Clicks "Remember" (SAVE_ACTIVE_TAB) or presses Alt+S -> saveTab(tabId)
+        SW->>SW: In-flight lock (activeIngestions), block incognito
+        SW->>Page: chrome.tabs.sendMessage({ type: "EXTRACT_PAGE" })
         Page->>Page: Clone DOM, run Readability + Turndown (Markdown) & split into ~160-word chunks
-        Page->>SW: chrome.runtime.sendMessage({ type: "INDEX_PAGE_DATA", payload })
+        Page-->>SW: ExtractPageResponse (canonical URL, text, chunks)
+        SW->>SW: id = SHA-256(canonical URL)
         SW->>SW: Check current IndexedDB usage against user's maxStorageBytes cap (default 50 MB)
         alt Quota Exceeded (or >= 85% Warning)
             SW->>SidePanel: Emit { type: "STORAGE_QUOTA_EXCEEDED", suggestedNewCapBytes: 250MB }
@@ -17,16 +20,16 @@ sequenceDiagram
         else Within Quota
             SW->>DB: Save ArticleRecord (status: "indexing") & ArticleContentRecord (Markdown/Text)
             SW->>SW: Ensure Offscreen Document exists
-            SW->>Offscreen: chrome.runtime.sendMessage({ type: "GENERATE_EMBEDDINGS_JOB", articleId, textChunks })
+            SW->>Offscreen: chrome.runtime.sendMessage({ type: "GENERATE_EMBEDDINGS_JOB", target: "offscreen", payload })
             Offscreen->>Offscreen: Run @huggingface/transformers (all-MiniLM-L6-v2) via WebGPU/WASM
             Offscreen->>DB: Direct atomic write: Save Float32Array(384) chunks & update status="indexed"
-            Offscreen->>SW: Notify { type: "ARTICLE_INDEXED", articleId }
+            Offscreen->>SW: Notify { type: "ARTICLE_INDEXED", payload: { articleId, url } }
             SW->>SidePanel: Update toolbar badge (✓) & refresh Side Panel contextual banner
         end
 
         Note over User,SidePanel: User searches & jumps to highlighted passage
         User->>SidePanel: Types query: "prevent Go race condition"
-        SidePanel->>Offscreen: Search request ({ type: "SEARCH_QUERY", query })
+        SidePanel->>Offscreen: Search request ({ type: "SEARCH_QUERY", target: "offscreen", payload })
         Offscreen->>Offscreen: Embed query into Float32Array(384)
         Offscreen->>DB: Scan chunks & compute Hybrid Score (Cosine Similarity + Lexical Match)
         Offscreen-->>SidePanel: Ranked matching articles & best snippets

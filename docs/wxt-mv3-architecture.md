@@ -73,7 +73,7 @@ Building a privacy-first, local-first semantic retrieval system within these con
 - **Lifecycle:** **Ephemeral & Event-Driven**. Chrome spins up the service worker when an event fires (e.g., `chrome.commands.onCommand`, `chrome.tabs.onActivated`, `chrome.runtime.onMessage`) and terminates it after ~30 seconds of inactivity to save memory.
 - **Key Responsibilities:**
   1. **Panel Behavior Configuration:** Enables `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` so clicking the extension action icon instantly toggles the Side Panel.
-  2. **Shortcut Dispatcher:** Catches `Alt+S` (`remember-page`) and dispatches `INDEX_CURRENT_TAB` to the active tab's content script.
+  2. **Shortcut Dispatcher:** Catches `Alt+S` (`remember-page`) and invokes the shared `saveTab(tabId)` coordinator (same code path as the side panel's `SAVE_ACTIVE_TAB`), which sends `EXTRACT_PAGE` to the content script. A per-tab in-memory lock (`activeIngestions`) rejects duplicates; it is intentionally not persisted, so a service-worker restart simply clears it (re-saves are idempotent).
   3. **Storage Quota Gatekeeper:** Before ingestion, queries `navigator.storage.estimate()` and validates available quota against `StorageSettings.maxStorageBytes` (default `50 MB`).
   4. **Badge Synchronization:** Updates the toolbar icon with a green checkmark badge (`✓`) if the active tab is already indexed.
 
@@ -165,7 +165,7 @@ chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
 Because the Background Service Worker, Offscreen Document, Side Panel, and Options page run under the same extension origin (`chrome-extension://<extension-id>`), they share a single IndexedDB storage instance (`second_brain_db`).
 
-- **Control IPC:** Only lightweight control messages (e.g. `{ type: 'INDEX_CURRENT_TAB' }`, `{ type: 'CHECK_TAB_STATUS' }`, `{ type: 'GENERATE_EMBEDDINGS_JOB', payload: { articleId, textChunks } }`) pass through `chrome.runtime.sendMessage`.
+- **Control IPC:** Only lightweight control messages (e.g. `{ type: 'SAVE_ACTIVE_TAB' }`, `{ type: 'CHECK_TAB_STATUS' }`, `{ type: 'GENERATE_EMBEDDINGS_JOB', target: 'offscreen', payload: { articleId, textChunks } }`) pass through `chrome.runtime.sendMessage`.
 - **Zero-Copy Vector Storage:** Heavy binary vectors (`Float32Array(384)`) are written directly to IndexedDB by the Offscreen Document and queried in-place during semantic search. No serialized multi-megabyte Float32 arrays are sent over Chrome IPC.
 
 ---

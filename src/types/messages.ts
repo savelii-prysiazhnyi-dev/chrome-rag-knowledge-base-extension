@@ -100,7 +100,7 @@ export interface StorageQuotaStatus {
 
 // Internal IPC Messaging Protocol (chrome.runtime.sendMessage)
 export type ExtensionMessage =
-  | { type: 'INDEX_CURRENT_TAB' }
+  | { type: 'SAVE_ACTIVE_TAB' }
   | { type: 'EXTRACT_PAGE' }
   | {
       type: 'INDEX_PAGE_DATA';
@@ -122,11 +122,15 @@ export type ExtensionMessage =
   | { type: 'UPDATE_STORAGE_CAP'; payload: { newMaxStorageBytes: number } }
   | {
       type: 'GENERATE_EMBEDDINGS_JOB';
+      /** Routing: only the offscreen document handles this message. */
+      target: 'offscreen';
       payload: { articleId: string; textChunks: string[] };
     }
   | { type: 'ARTICLE_INDEXED'; payload: { articleId: string; url: string } }
   | {
       type: 'SEARCH_QUERY';
+      /** Routing: only the offscreen document handles this message. */
+      target: 'offscreen';
       payload: {
         query: string;
         topK?: number;
@@ -158,7 +162,7 @@ export interface TabStatusResponse {
   article?: ArticleRecord;
 }
 
-// Content script extraction result (response to INDEX_CURRENT_TAB / EXTRACT_PAGE)
+// Content script extraction result (response to EXTRACT_PAGE)
 export type ExtractPageErrorCode =
   'BLOCKED_URL' | 'NOT_READABLE' | 'TOO_SHORT' | 'EXTRACTION_FAILED';
 

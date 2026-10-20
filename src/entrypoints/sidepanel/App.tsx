@@ -47,7 +47,7 @@ export default function App(): React.JSX.Element {
   const handleRememberCurrentTab = () => {
     setIsSaving(true);
     if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
-      chrome.runtime.sendMessage({ type: 'INDEX_CURRENT_TAB' }, () => {
+      chrome.runtime.sendMessage({ type: 'SAVE_ACTIVE_TAB' }, () => {
         setTimeout(() => {
           setIsSaving(false);
         }, 600);

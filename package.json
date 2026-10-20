@@ -36,6 +36,7 @@
     "wxt": "^0.21.4"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.3.1",
     "@mozilla/readability": "^0.6.0",
     "dompurify": "^3.4.17",
     "idb": "^8.0.4",

@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 4: Offscreen Embedding Engine, Hybrid Search & Background Coordinator:**
+  - Added dependency `@huggingface/transformers` (model `Xenova/all-MiniLM-L6-v2`, mean pooling, normalized); `pnpm-workspace.yaml` disables unneeded native build scripts (`onnxruntime-node`, `protobufjs`).
+  - `wxt.config.ts` copies ONNX Runtime `.wasm`/`.mjs` files into `ort/` in the build (no CDN); `env.backends.onnx.wasm.wasmPaths` points at them. WebGPU preferred, WASM fallback.
+  - Added `src/lib/search/` (`cosineSimilarity`, BM25-lite `lexicalScores`/`tokenize`, `hybridScore` 0.7/0.3, `rankChunksToArticles` with `domainFilter`/`starredOnly`) and `src/lib/embeddings/` (`Embedder` with injectable pipeline and batching).
+  - Offscreen document now handles `GENERATE_EMBEDDINGS_JOB` (embed, direct IndexedDB write, `markArticleFailed` on error, `ARTICLE_INDEXED`) and `SEARCH_QUERY` (`SEARCH_RESULTS`).
+  - Background `saveTab(tabId)` coordinator (`src/entrypoints/background/coordinator.ts`) shared by `Alt+S` and `SAVE_ACTIVE_TAB`: in-flight lock, incognito block, quota gate, SHA-256 article id (`hashUrl`), offscreen document mutex, badge on `ARTICLE_INDEXED`, real `CHECK_TAB_STATUS`.
+  - Added 21 unit tests; added `docs/embedding-pipeline.md` and `docs/hybrid-search.md`.
+
+### Changed
+
+- Renamed side-panel intent `INDEX_CURRENT_TAB` to `SAVE_ACTIVE_TAB`; removed it from the content script. `GENERATE_EMBEDDINGS_JOB` and `SEARCH_QUERY` now carry `target: 'offscreen'` so only the offscreen document handles them.
+
 - **Phase 3: Content Script, Readability Distillation & Guardrails:**
   - Added dependencies `@mozilla/readability`, `dompurify`, `turndown`; dev dependencies `@types/turndown`, `jsdom`.
   - Added pure content pipeline modules in `src/lib/content/`: `canonicalizeUrl` (strips hash and tracking params), `guardrails` (blocks non-http(s), private hosts, sensitive domains/paths), `distillDocument` (non-destructive cloned-DOM Readability, DOMPurify sanitization, Turndown Markdown), and `chunkText` (sentence-aware ~160-word chunks, 30-word overlap).

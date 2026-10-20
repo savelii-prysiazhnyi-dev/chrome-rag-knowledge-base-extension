@@ -1,9 +1,50 @@
-import type { ExtensionMessage, TabStatusResponse } from '../../types/messages';
+import type {
+  ExtensionMessage,
+  ExtractPageResponse,
+  TabStatusResponse,
+} from '../../types/messages';
+import {
+  checkStorageQuota,
+  estimatePayloadBytes,
+  getArticleByUrl,
+  upsertArticleWithContent,
+} from '../../db';
+import { canonicalizeUrl, hashUrl } from '../../lib/content';
+import { createCoordinator } from './coordinator';
+
+const OFFSCREEN_PATH = 'offscreen.html';
+
+let offscreenCreating: Promise<void> | null = null;
+
+/**
+ * Ensures exactly one offscreen document exists. Uses chrome.runtime.getContexts
+ * to detect an existing document and a singleton promise to serialize creation.
+ */
+async function ensureOffscreenDocument(): Promise<void> {
+  const url = chrome.runtime.getURL(OFFSCREEN_PATH);
+  const existing = await chrome.runtime.getContexts({
+    contextTypes: ['OFFSCREEN_DOCUMENT' as chrome.runtime.ContextType],
+    documentUrls: [url],
+  });
+  if (existing.length > 0) return;
+  if (!offscreenCreating) {
+    offscreenCreating = chrome.offscreen
+      .createDocument({
+        url: OFFSCREEN_PATH,
+        reasons: ['WORKERS' as chrome.offscreen.Reason],
+        justification:
+          'Run on-device embedding model inference (WebGPU/WASM) and hybrid vector search.',
+      })
+      .finally(() => {
+        offscreenCreating = null;
+      });
+  }
+  await offscreenCreating;
+}
 
 export default defineBackground(() => {
   console.log('[Second Brain] Background Service Worker initialized.');
 
-  // Configure Chrome action click to automatically open the Side Panel
   if (chrome.sidePanel?.setPanelBehavior) {
     chrome.sidePanel
       .setPanelBehavior({ openPanelOnActionClick: true })
@@ -15,84 +56,99 @@ export default defineBackground(() => {
       });
   }
 
-  // Keyboard shortcut listener ('Alt+S' / 'remember-page')
+  const coordinator = createCoordinator({
+    getTab: tabId => chrome.tabs.get(tabId),
+    extractPage: tabId =>
+      chrome.tabs.sendMessage(tabId, {
+        type: 'EXTRACT_PAGE',
+      } satisfies ExtensionMessage) as Promise<ExtractPageResponse | undefined>,
+    hashUrl,
+    estimatePayloadBytes,
+    checkStorageQuota,
+    upsertArticleWithContent,
+    ensureOffscreenDocument,
+    sendToOffscreen: message => chrome.runtime.sendMessage(message),
+    emit: message => {
+      // No receiver (side panel closed) is expected; swallow the error.
+      chrome.runtime.sendMessage(message).catch(() => {});
+    },
+  });
+
+  async function saveActiveTab() {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    return coordinator.saveTab(tab?.id);
+  }
+
+  // Keyboard shortcut ('Alt+S' / 'remember-page') shares the same coordinator.
   chrome.commands.onCommand.addListener((command: string) => {
-    console.log(`[Second Brain] Command received: ${command}`);
     if (command === 'remember-page') {
-      chrome.tabs.query(
-        { active: true, currentWindow: true },
-        (tabs: chrome.tabs.Tab[]) => {
-          const activeTab = tabs[0];
-          if (!activeTab?.id) return;
-          console.log(
-            `[Second Brain] Triggering remember-page for tab ${activeTab.id}: ${activeTab.url ?? 'unknown'}`,
-          );
-          chrome.tabs
-            .sendMessage(activeTab.id, { type: 'INDEX_CURRENT_TAB' })
-            .catch((error: unknown) => {
-              console.warn(
-                '[Second Brain] Could not reach content script on tab:',
-                activeTab.id,
-                error,
-              );
-            });
-        },
+      void saveActiveTab().then(r =>
+        console.log('[Second Brain] remember-page result:', r.status),
       );
     }
   });
 
-  // Runtime message coordinator
   chrome.runtime.onMessage.addListener(
     (
-      message: ExtensionMessage,
+      message: ExtensionMessage & { target?: string },
       _sender: chrome.runtime.MessageSender,
       sendResponse: (response?: unknown) => void,
     ) => {
-      console.log(
-        '[Second Brain] Message received in background:',
-        message.type,
-      );
+      // Messages routed to the offscreen document are never handled here.
+      if (message.target === 'offscreen') return false;
 
       switch (message.type) {
         case 'CHECK_TAB_STATUS': {
-          // Baseline implementation for Phase 1: returns not saved yet
-          const response: TabStatusResponse = {
-            isSaved: false,
-          };
-          sendResponse(response);
+          getArticleByUrl(canonicalizeUrl(message.payload.url))
+            .then(article => {
+              const response: TabStatusResponse = article
+                ? { isSaved: true, article }
+                : { isSaved: false };
+              sendResponse(response);
+            })
+            .catch(() => sendResponse({ isSaved: false }));
           return true;
         }
 
-        case 'INDEX_CURRENT_TAB': {
-          chrome.tabs.query(
-            { active: true, currentWindow: true },
-            (tabs: chrome.tabs.Tab[]) => {
-              const activeTab = tabs[0];
-              if (activeTab?.id) {
-                chrome.tabs
-                  .sendMessage(activeTab.id, { type: 'INDEX_CURRENT_TAB' })
-                  .then(() => {
-                    sendResponse({ status: 'dispatched' });
-                  })
-                  .catch((err: unknown) => {
-                    console.warn(
-                      '[Second Brain] Failed to send INDEX_CURRENT_TAB to tab:',
-                      err,
-                    );
-                    sendResponse({ status: 'error', error: String(err) });
-                  });
-              } else {
-                sendResponse({ status: 'no_active_tab' });
-              }
-            },
-          );
-          return true; // Keep channel open for async response
+        case 'SAVE_ACTIVE_TAB': {
+          saveActiveTab()
+            .then(sendResponse)
+            .catch((e: unknown) =>
+              sendResponse({ status: 'error', error: String(e) }),
+            );
+          return true;
+        }
+
+        case 'ARTICLE_INDEXED': {
+          chrome.tabs
+            .query({})
+            .then(tabs =>
+              Promise.all(
+                tabs
+                  .filter(
+                    t =>
+                      t.id !== undefined &&
+                      t.url &&
+                      canonicalizeUrl(t.url) === message.payload.url,
+                  )
+                  .map(t =>
+                    chrome.action.setBadgeText({
+                      tabId: t.id as number,
+                      text: '✓',
+                    }),
+                  ),
+              ),
+            )
+            .catch(() => {});
+          return false;
         }
 
         default:
           break;
       }
-
       return false;
     },
   );

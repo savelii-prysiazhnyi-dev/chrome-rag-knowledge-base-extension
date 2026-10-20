@@ -149,7 +149,7 @@ The extension follows Manifest V3 specifications, dividing responsibilities acro
 - **Role:** Lightweight event coordinator, storage quota gatekeeper, and lifecycle manager.
 - **Mechanisms:**
   - Evaluates URL canonicalization (stripping `utm_*`, `fbclid`, `#hash` fragments), incognito status, and sensitive-domain warnings.
-  - **Storage Quota Gatekeeper:** Before accepting an `INDEX_PAGE_DATA` job, queries `navigator.storage.estimate()` and compares current IndexedDB usage + estimated payload size against the user's configured `maxStorageBytes` setting in `chrome.storage.local` (default `50 MB`). If exceeded, emits `STORAGE_QUOTA_EXCEEDED` to the Side Panel so the user can either raise the cap or clean up existing articles.
+  - **Storage Quota Gatekeeper:** Before persisting an extracted page, queries `navigator.storage.estimate()` and compares current IndexedDB usage + estimated payload size against the user's configured `maxStorageBytes` setting in `chrome.storage.local` (default `50 MB`). If exceeded, emits `STORAGE_QUOTA_EXCEEDED` to the Side Panel so the user can either raise the cap or clean up existing articles.
   - Monitors `chrome.tabs.onActivated` and `chrome.tabs.onUpdated` to check IndexedDB for the canonical URL and update the toolbar badge (`✓`).
   - Manages the Offscreen Document lifecycle (`chrome.offscreen.createDocument`) with a singleton mutex lock so concurrent requests never spawn duplicate offscreen contexts.
 
@@ -217,7 +217,7 @@ The extension follows Manifest V3 specifications, dividing responsibilities acro
 
 1. User clicks **"Remember"** (`Alt + S`) on an active web page.
 2. Content script clones the DOM, runs Readability, converts the body to Markdown (`turndown`) and plain text, and splits the text into ~150–180 word overlapping chunks.
-3. Content script sends `INDEX_PAGE_DATA` to the Background Service Worker.
+3. The Background Service Worker's shared `saveTab(tabId)` coordinator (used by both `Alt+S` and the Side Panel's `SAVE_ACTIVE_TAB` message) requests extraction from the content script via `EXTRACT_PAGE`.
 4. **Storage Quota Check:** Background Service Worker checks `navigator.storage.estimate()` against the user's configured `maxStorageBytes` (default `50 MB`):
    - If `currentUsage + payloadBytes > maxStorageBytes`, the worker halts ingestion and dispatches `STORAGE_QUOTA_EXCEEDED` to the Side Panel. The user can either approve a higher disk limit (e.g., `250 MB`, retrying the save immediately) or open Cleanup Tools.
    - If within quota, the worker canonicalizes the URL, writes the initial `ArticleRecord` (`status: 'indexing'`) and `ArticleContentRecord` to IndexedDB, and dispatches `GENERATE_EMBEDDINGS_JOB` to the Offscreen Document.
@@ -337,7 +337,7 @@ export interface StorageSettings {
 
 ```typescript
 export type ExtensionMessage =
-  | { type: 'INDEX_CURRENT_TAB' }
+  | { type: 'SAVE_ACTIVE_TAB' } // side panel -> background
   | {
       type: 'INDEX_PAGE_DATA';
       payload: {

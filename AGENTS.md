@@ -18,6 +18,8 @@
 - **Specifications & Architecture (`docs/`):**
   - [`docs/SPECIFICATION.md`](./docs/SPECIFICATION.md) — Master product, architecture, schema, and ADR specification (`v1.2.0`).
   - [`docs/storage-engine.md`](./docs/storage-engine.md) — 3NF relational + vector IndexedDB engine, Structured Clone binary persistence, and quota gatekeeper guide.
+  - [`docs/embedding-pipeline.md`](./docs/embedding-pipeline.md) — Offscreen embedding engine: WordPiece, MiniLM encoder, mean pooling, normalization, WebGPU/WASM, model caching, lifecycle.
+  - [`docs/hybrid-search.md`](./docs/hybrid-search.md) — Hybrid dense + lexical ranking formula, alpha, and chunk-to-article aggregation.
   - [`docs/content-pipeline.md`](./docs/content-pipeline.md) — Content script distillation pipeline: Readability, DOMPurify, Turndown, chunking, URL canonicalization, and guardrails.
   - [`docs/wxt-mv3-architecture.md`](./docs/wxt-mv3-architecture.md) — Manifest V3 process model, 5 core entrypoints, CSP, and IPC topology guide.
   - [`docs/sample-user-flow.mmd`](./docs/sample-user-flow.mmd) — Mermaid sequence diagram of the ingestion, quota gatekeeper, and hybrid search flows.

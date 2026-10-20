@@ -43,10 +43,7 @@ export default defineContentScript({
         _sender: chrome.runtime.MessageSender,
         sendResponse: (response?: unknown) => void,
       ) => {
-        if (
-          message.type === 'INDEX_CURRENT_TAB' ||
-          message.type === 'EXTRACT_PAGE'
-        ) {
+        if (message.type === 'EXTRACT_PAGE') {
           sendResponse(extractCurrentPage());
           return true;
         }
