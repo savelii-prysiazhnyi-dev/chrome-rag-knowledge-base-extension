@@ -117,6 +117,19 @@ export function estimatePayloadBytes(
 }
 
 /**
+ * Chromium extends StorageEstimate with an optional usageDetails map
+ * breaking down usage across indexedDB, caches, serviceWorkerRegistrations, etc.
+ */
+export interface ExtendedStorageEstimate extends StorageEstimate {
+  usageDetails?: {
+    indexedDB?: number;
+    caches?: number;
+    serviceWorkerRegistrations?: number;
+    [key: string]: number | undefined;
+  };
+}
+
+/**
  * Evaluates the two-layer storage quota against navigator.storage.estimate() and user settings.
  */
 export async function checkStorageQuota(
@@ -124,13 +137,24 @@ export async function checkStorageQuota(
 ): Promise<StorageQuotaStatus> {
   const settings = await getStorageSettings();
   let currentUsageBytes = 0;
+  let indexedDBUsageBytes: number | undefined;
+  let modelCacheUsageBytes: number | undefined;
   // Default to 10 GB pool quota fallback when navigator.storage is unmocked or missing
   let browserQuotaBytes = 10 * 1024 * 1024 * 1024;
+  let totalUsageBytes = 0;
 
   if (typeof navigator !== 'undefined' && navigator.storage?.estimate) {
     try {
-      const estimate = await navigator.storage.estimate();
-      currentUsageBytes = estimate.usage ?? 0;
+      const estimate =
+        (await navigator.storage.estimate()) as ExtendedStorageEstimate;
+      totalUsageBytes = estimate.usage ?? 0;
+      if (estimate.usageDetails?.indexedDB !== undefined) {
+        currentUsageBytes = estimate.usageDetails.indexedDB;
+        indexedDBUsageBytes = estimate.usageDetails.indexedDB;
+        modelCacheUsageBytes = estimate.usageDetails.caches ?? 0;
+      } else {
+        currentUsageBytes = totalUsageBytes;
+      }
       if (estimate.quota !== undefined) {
         browserQuotaBytes = estimate.quota;
       }
@@ -144,7 +168,7 @@ export async function checkStorageQuota(
 
   const freePhysicalDiskBytes = Math.max(
     0,
-    browserQuotaBytes - currentUsageBytes,
+    browserQuotaBytes - (totalUsageBytes || currentUsageBytes),
   );
   const maxStorageBytes = settings.maxStorageBytes;
   const usageRatio =
@@ -169,5 +193,7 @@ export async function checkStorageQuota(
     isLowPhysicalDisk,
     canSave,
     suggestedNewCapBytes,
+    indexedDBUsageBytes,
+    modelCacheUsageBytes,
   };
 }

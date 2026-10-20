@@ -215,6 +215,35 @@ Where:
      3. **One-Click Bulk Cleanup:** Purge all unstarred articles older than 60/90 days or all unstarred articles from a specific domain (`bulkDeleteUnstarred`).
 4. **Low Physical Disk Guardrail (`freePhysicalDiskBytes < 500 MB`):** Ingestion is strictly blocked regardless of the user's extension cap until space is freed on the host machine.
 
+### 6.4 Storage Isolation: IndexedDB vs. Browser Model Cache (`usageDetails`)
+
+In Chromium-based browsers, `navigator.storage.estimate()` returns total origin-wide storage (`estimate.usage`), which lumps together all origin storage mechanisms:
+
+1. **IndexedDB:** Relational metadata, partitioned text, and vector embeddings (`articles`, `article_contents`, `chunks`).
+2. **Cache API (`window.caches`):** The ~24.3 MB quantized ONNX model weights (`all-MiniLM-L6-v2`) cached by `@huggingface/transformers`.
+3. **Service Worker registrations & other origin storage.**
+
+If origin-wide `estimate.usage` were measured directly against the user's 50 MB budget, the static AI model weights (~24.3 MB) would immediately consume ~48.7% of the budget with zero articles saved.
+
+To isolate the user's article budget from the static AI model cache, `checkStorageQuota()` inspects Chromium's extended `StorageEstimate.usageDetails` dictionary (`ExtendedStorageEstimate`):
+
+```typescript
+export interface ExtendedStorageEstimate extends StorageEstimate {
+  usageDetails?: {
+    indexedDB?: number;
+    caches?: number;
+    serviceWorkerRegistrations?: number;
+    [key: string]: number | undefined;
+  };
+}
+```
+
+- When `extEstimate.usageDetails?.indexedDB !== undefined`:
+  - `currentUsageBytes` is assigned to `usageDetails.indexedDB`, ensuring the 50 MB budget strictly governs IndexedDB articles and vectors (~1,000–1,500 articles).
+  - `indexedDBUsageBytes` and `modelCacheUsageBytes` (`usageDetails.caches ?? 0`) are populated on `StorageQuotaStatus`.
+- When `usageDetails` is unavailable (e.g., non-Chromium or legacy environments), the gatekeeper falls back to `estimate.usage ?? 0`.
+- The Knowledge Manager (`options.html`) displays a dedicated indicator under the quota bar for the on-device AI model cache (`window.caches`), keeping it distinct and transparent.
+
 ---
 
 ## 7. Public API Reference (`src/db/index.ts`)
@@ -253,6 +282,7 @@ export function deleteArticles(articleIds): Promise<number>;
 export function bulkDeleteUnstarred(filter): Promise<number>;
 
 // Quota Gatekeeper
+export interface ExtendedStorageEstimate extends StorageEstimate { ... }
 export function getStorageSettings(): Promise<StorageSettings>;
 export function updateStorageCap(newMaxStorageBytes): Promise<StorageSettings>;
 export function estimatePayloadBytes(article, content, textChunks): number;

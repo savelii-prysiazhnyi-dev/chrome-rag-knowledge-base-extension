@@ -521,7 +521,9 @@ export default function App(): React.JSX.Element {
   };
 
   const usageMB = quotaStatus
-    ? formatBytesToMB(quotaStatus.currentUsageBytes)
+    ? formatBytesToMB(
+        quotaStatus.indexedDBUsageBytes ?? quotaStatus.currentUsageBytes,
+      )
     : '0.0';
   const maxMB = quotaStatus
     ? Math.round(quotaStatus.maxStorageBytes / (1024 * 1024))

@@ -96,6 +96,10 @@ export interface StorageQuotaStatus {
   canSave: boolean;
   /** Suggested new cap when expanding storage (e.g. 250 MB or 2x current cap) */
   suggestedNewCapBytes: number;
+  /** IndexedDB storage usage in bytes when supported by browser usageDetails */
+  indexedDBUsageBytes?: number;
+  /** Cache API usage in bytes (e.g., ONNX model weights) when supported by browser usageDetails */
+  modelCacheUsageBytes?: number;
 }
 
 // Internal IPC Messaging Protocol (chrome.runtime.sendMessage)

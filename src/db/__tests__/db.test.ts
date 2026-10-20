@@ -24,11 +24,14 @@ import {
   checkStorageQuota,
   LOW_PHYSICAL_DISK_BYTES,
   DEFAULT_SUGGESTED_EXPANSION_BYTES,
+  type ExtendedStorageEstimate,
 } from '../index';
 import type { ArticleRecord, ArticleContentRecord } from '../../types/messages';
 
 function mockNavigatorStorage(
-  estimateFn: () => Promise<{ usage?: number; quota?: number }>,
+  estimateFn: () => Promise<
+    Partial<ExtendedStorageEstimate> & { usage?: number; quota?: number }
+  >,
 ) {
   Object.defineProperty(globalThis, 'navigator', {
     value: {
@@ -778,6 +781,34 @@ describe('Second Brain DB & Quota Gatekeeper', () => {
       expect(quota.freePhysicalDiskBytes).toBeLessThan(LOW_PHYSICAL_DISK_BYTES);
       expect(quota.isLowPhysicalDisk).toBe(true);
       expect(quota.canSave).toBe(false);
+    });
+
+    it('isolates IndexedDB storage from browser model cache via usageDetails', async () => {
+      // Total origin usage: ~29.3 MB (24.3 MB ONNX model cache in window.caches + 5 MB IndexedDB articles)
+      const indexedDBUsage = 5 * 1024 * 1024; // 5 MB
+      const modelCacheUsage = 24.3 * 1024 * 1024; // 24.3 MB
+      const totalOriginUsage = indexedDBUsage + modelCacheUsage; // 29.3 MB
+
+      mockNavigatorStorage(async () => ({
+        usage: totalOriginUsage,
+        quota: 50 * 1024 * 1024 * 1024, // 50 GB
+        usageDetails: {
+          indexedDB: indexedDBUsage,
+          caches: modelCacheUsage,
+        },
+      }));
+
+      const quota = await checkStorageQuota();
+      // Quota gatekeeper must strictly measure IndexedDB usage against the 50 MB budget (5 MB / 50 MB = 10%)
+      // rather than total origin storage (29.3 MB / 50 MB = 58.6%)
+      expect(quota.currentUsageBytes).toBe(indexedDBUsage);
+      expect(quota.indexedDBUsageBytes).toBe(indexedDBUsage);
+      expect(quota.modelCacheUsageBytes).toBe(modelCacheUsage);
+      expect(quota.maxStorageBytes).toBe(50 * 1024 * 1024);
+      expect(quota.usageRatio).toBeCloseTo(0.1, 2);
+      expect(quota.isWarning).toBe(false);
+      expect(quota.isExceeded).toBe(false);
+      expect(quota.canSave).toBe(true);
     });
   });
 });
