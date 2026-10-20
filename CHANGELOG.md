@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 3: Content Script, Readability Distillation & Guardrails:**
+  - Added dependencies `@mozilla/readability`, `dompurify`, `turndown`; dev dependencies `@types/turndown`, `jsdom`.
+  - Added pure content pipeline modules in `src/lib/content/`: `canonicalizeUrl` (strips hash and tracking params), `guardrails` (blocks non-http(s), private hosts, sensitive domains/paths), `distillDocument` (non-destructive cloned-DOM Readability, DOMPurify sanitization, Turndown Markdown), and `chunkText` (sentence-aware ~160-word chunks, 30-word overlap).
+  - Added `EXTRACT_PAGE` message and `ExtractPageResponse` union in `src/types/messages.ts`; `INDEX_CURRENT_TAB` now returns the full extraction result from `src/entrypoints/content/index.ts`.
+  - Added 30 unit tests in `src/lib/content/__tests__/` (jsdom via per-file environment).
+  - Added `docs/content-pipeline.md`, linked in `AGENTS.md`.
 - **Phase 2: IndexedDB Relational + Vector Store & Quota Gatekeeper (`src/db`):**
   - Installed `idb` in dependencies; installed `vitest`, `fake-indexeddb`, and `@types/node` in `devDependencies`.
   - Configured `test` (`vitest run`) and `test:watch` (`vitest`) scripts in `package.json`, along with `vitest.config.ts` and `src/test/setup.ts` (`fake-indexeddb/auto`).

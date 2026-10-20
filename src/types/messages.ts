@@ -101,6 +101,7 @@ export interface StorageQuotaStatus {
 // Internal IPC Messaging Protocol (chrome.runtime.sendMessage)
 export type ExtensionMessage =
   | { type: 'INDEX_CURRENT_TAB' }
+  | { type: 'EXTRACT_PAGE' }
   | {
       type: 'INDEX_PAGE_DATA';
       payload: {
@@ -156,3 +157,23 @@ export interface TabStatusResponse {
   isSaved: boolean;
   article?: ArticleRecord;
 }
+
+// Content script extraction result (response to INDEX_CURRENT_TAB / EXTRACT_PAGE)
+export type ExtractPageErrorCode =
+  'BLOCKED_URL' | 'NOT_READABLE' | 'TOO_SHORT' | 'EXTRACTION_FAILED';
+
+export type ExtractPageResponse =
+  | {
+      ok: true;
+      canonicalUrl: string;
+      title: string;
+      byline?: string;
+      siteName: string;
+      excerpt: string;
+      textContent: string;
+      markdown: string;
+      wordCount: number;
+      readingTimeMinutes: number;
+      chunks: Array<{ chunkIndex: number; text: string }>;
+    }
+  | { ok: false; error: ExtractPageErrorCode; reason?: string };

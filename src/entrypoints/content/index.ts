@@ -1,35 +1,57 @@
-import type { ExtensionMessage } from '../../types/messages';
+import type {
+  ExtensionMessage,
+  ExtractPageResponse,
+} from '../../types/messages';
+import {
+  canonicalizeUrl,
+  checkUrlGuardrails,
+  chunkText,
+  distillDocument,
+} from '../../lib/content';
+
+function extractCurrentPage(): ExtractPageResponse {
+  const url = window.location.href;
+  const guard = checkUrlGuardrails(url);
+  if (guard.blocked) {
+    return { ok: false, error: 'BLOCKED_URL', reason: guard.reason };
+  }
+  try {
+    const result = distillDocument(document, url);
+    if (!result.ok) return { ok: false, error: result.error };
+    const d = result.data;
+    return {
+      ok: true,
+      canonicalUrl: canonicalizeUrl(url),
+      ...d,
+      chunks: chunkText(d.textContent),
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: 'EXTRACTION_FAILED',
+      reason: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
 
 export default defineContentScript({
   matches: ['http://*/*', 'https://*/*'],
   main() {
-    console.log(
-      '[Second Brain] Content script loaded on:',
-      window.location.href,
-    );
-
     chrome.runtime.onMessage.addListener(
       (
         message: ExtensionMessage,
         _sender: chrome.runtime.MessageSender,
         sendResponse: (response?: unknown) => void,
       ) => {
-        if (message.type === 'INDEX_CURRENT_TAB') {
-          console.log(
-            '[Second Brain] Content script received INDEX_CURRENT_TAB. Ready for Phase 3 Readability extraction.',
-          );
-          sendResponse({
-            status: 'ready_for_extraction',
-            url: window.location.href,
-          });
+        if (
+          message.type === 'INDEX_CURRENT_TAB' ||
+          message.type === 'EXTRACT_PAGE'
+        ) {
+          sendResponse(extractCurrentPage());
           return true;
         }
 
         if (message.type === 'SCROLL_AND_HIGHLIGHT') {
-          console.log(
-            '[Second Brain] Content script received SCROLL_AND_HIGHLIGHT snippet:',
-            message.payload.snippet,
-          );
           sendResponse({ status: 'received' });
           return true;
         }
