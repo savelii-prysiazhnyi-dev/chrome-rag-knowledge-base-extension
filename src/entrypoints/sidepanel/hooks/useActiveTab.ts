@@ -156,6 +156,14 @@ export function useActiveTab(
           .setBadgeText({ tabId: activeTabId, text: '' })
           .catch(() => {});
       }
+      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+        chrome.runtime
+          .sendMessage({
+            type: 'DATABASE_UPDATED',
+            payload: { reason: 'article_deleted', articleId: savedArticle.id },
+          } satisfies ExtensionMessage)
+          .catch(() => {});
+      }
       setSavedArticle(undefined);
       onDataChange?.();
     } catch (err) {
@@ -186,6 +194,9 @@ export function useActiveTab(
         setIsSaving(false);
         void refreshActiveTab();
         onArticleIndexed?.(message.payload);
+        onDataChange?.();
+      } else if (message.type === 'DATABASE_UPDATED') {
+        void refreshActiveTab();
         onDataChange?.();
       } else if (message.type === 'STORAGE_QUOTA_EXCEEDED') {
         setIsSaving(false);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { checkStorageQuota, updateStorageCap } from '../db';
-import type { StorageQuotaStatus } from '../types/messages';
+import type { ExtensionMessage, StorageQuotaStatus } from '../types/messages';
 
 export interface UseStorageQuotaReturn {
   quotaStatus: StorageQuotaStatus | null;
@@ -45,6 +45,14 @@ export function useStorageQuota(): UseStorageQuotaReturn {
           .catch(() => false);
       }
       await updateStorageCap(newCapBytes);
+      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+        chrome.runtime
+          .sendMessage({
+            type: 'DATABASE_UPDATED',
+            payload: { reason: 'cap_updated' },
+          } satisfies ExtensionMessage)
+          .catch(() => {});
+      }
       await refreshQuota();
     },
     [refreshQuota],
@@ -52,6 +60,39 @@ export function useStorageQuota(): UseStorageQuotaReturn {
 
   useEffect(() => {
     void Promise.resolve().then(() => refreshQuota());
+
+    const handleRuntimeMessage = (message: ExtensionMessage) => {
+      if (
+        message.type === 'ARTICLE_INDEXED' ||
+        message.type === 'DATABASE_UPDATED'
+      ) {
+        void refreshQuota();
+      }
+    };
+
+    const handleStorageChanged = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string,
+    ) => {
+      if (
+        areaName === 'local' &&
+        (changes.storageSettings || changes.maxStorageBytes)
+      ) {
+        void refreshQuota();
+      }
+    };
+
+    if (typeof chrome !== 'undefined') {
+      chrome.runtime?.onMessage?.addListener(handleRuntimeMessage);
+      chrome.storage?.onChanged?.addListener(handleStorageChanged);
+    }
+
+    return () => {
+      if (typeof chrome !== 'undefined') {
+        chrome.runtime?.onMessage?.removeListener(handleRuntimeMessage);
+        chrome.storage?.onChanged?.removeListener(handleStorageChanged);
+      }
+    };
   }, [refreshQuota]);
 
   return {

@@ -79,14 +79,21 @@ export function useKnowledgeManager(options: UseKnowledgeManagerOptions = {}) {
     void Promise.resolve().then(() => loadAllData());
 
     const handleRuntimeMessage = (message: ExtensionMessage) => {
-      if (message.type === 'ARTICLE_INDEXED') {
+      if (
+        message.type === 'ARTICLE_INDEXED' ||
+        message.type === 'DATABASE_UPDATED'
+      ) {
         void loadAllData();
         void onDataChange?.();
       }
     };
-    chrome.runtime?.onMessage?.addListener(handleRuntimeMessage);
+    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+      chrome.runtime.onMessage.addListener(handleRuntimeMessage);
+    }
     return () => {
-      chrome.runtime?.onMessage?.removeListener(handleRuntimeMessage);
+      if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+        chrome.runtime.onMessage.removeListener(handleRuntimeMessage);
+      }
     };
   }, [loadAllData, onDataChange]);
 
@@ -149,6 +156,14 @@ export function useKnowledgeManager(options: UseKnowledgeManagerOptions = {}) {
     async (articleId: string) => {
       try {
         await toggleArticleStar(articleId);
+        if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+          chrome.runtime
+            .sendMessage({
+              type: 'DATABASE_UPDATED',
+              payload: { reason: 'article_starred', articleId },
+            } satisfies ExtensionMessage)
+            .catch(() => {});
+        }
         await loadAllData();
         void onDataChange?.();
       } catch (err) {
@@ -171,6 +186,17 @@ export function useKnowledgeManager(options: UseKnowledgeManagerOptions = {}) {
         setStatusBanner(
           `Deleted ${deletedCount} article${deletedCount === 1 ? '' : 's'} and all associated vector chunks.`,
         );
+        if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+          chrome.runtime
+            .sendMessage({
+              type: 'DATABASE_UPDATED',
+              payload: {
+                reason: 'article_deleted',
+                articleId: ids.length === 1 ? ids[0] : undefined,
+              },
+            } satisfies ExtensionMessage)
+            .catch(() => {});
+        }
         await loadAllData();
         void onDataChange?.();
       } catch (err) {
@@ -203,6 +229,14 @@ export function useKnowledgeManager(options: UseKnowledgeManagerOptions = {}) {
           : 'No unstarred articles matched the cleanup criteria.',
       );
       setIsBulkCleanupOpen(false);
+      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+        chrome.runtime
+          .sendMessage({
+            type: 'DATABASE_UPDATED',
+            payload: { reason: 'bulk_cleanup' },
+          } satisfies ExtensionMessage)
+          .catch(() => {});
+      }
       await loadAllData();
       void onDataChange?.();
       return deletedCount;

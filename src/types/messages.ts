@@ -139,6 +139,18 @@ export type ExtensionMessage =
     }
   | { type: 'ARTICLE_INDEXED'; payload: { articleId: string; url: string } }
   | {
+      type: 'DATABASE_UPDATED';
+      payload: {
+        reason:
+          | 'article_saved'
+          | 'article_deleted'
+          | 'article_starred'
+          | 'bulk_cleanup'
+          | 'cap_updated';
+        articleId?: string;
+      };
+    }
+  | {
       type: 'SEARCH_QUERY';
       /** Routing: when set to 'offscreen', handled directly by offscreen document; otherwise background ensures offscreen and forwards. */
       target?: 'offscreen';

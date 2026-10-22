@@ -109,6 +109,10 @@ export function createCoordinator(deps: CoordinatorDeps) {
     }
 
     await deps.upsertArticleWithContent(article, content, 'indexing');
+    deps.emit({
+      type: 'DATABASE_UPDATED',
+      payload: { reason: 'article_saved', articleId: id },
+    });
     await deps.ensureOffscreenDocument();
     await deps.sendToOffscreen({
       type: 'GENERATE_EMBEDDINGS_JOB',

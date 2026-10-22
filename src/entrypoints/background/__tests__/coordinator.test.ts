@@ -56,6 +56,10 @@ describe('coordinator.saveTab', () => {
     expect(article.faviconUrl).toBe('f.ico');
     expect(article.id).toBe('hash');
     expect(status).toBe('indexing');
+    expect(deps.emit).toHaveBeenCalledWith({
+      type: 'DATABASE_UPDATED',
+      payload: { reason: 'article_saved', articleId: 'hash' },
+    });
     expect(deps.sendToOffscreen).toHaveBeenCalledWith({
       type: 'GENERATE_EMBEDDINGS_JOB',
       target: 'offscreen',

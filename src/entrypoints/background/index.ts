@@ -256,6 +256,17 @@ export default defineBackground(() => {
           return false;
         }
 
+        case 'DATABASE_UPDATED': {
+          if (
+            message.payload.reason === 'article_saved' ||
+            message.payload.reason === 'article_deleted' ||
+            message.payload.reason === 'bulk_cleanup'
+          ) {
+            void syncAllTabBadges();
+          }
+          return false;
+        }
+
         default:
           break;
       }

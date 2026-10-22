@@ -6,7 +6,7 @@ import {
   listArticles,
   toggleArticleStar,
 } from '../../../db';
-import type { ArticleRecord } from '../../../types/messages';
+import type { ArticleRecord, ExtensionMessage } from '../../../types/messages';
 
 export interface UseLibraryArticlesOptions {
   onStarToggled?: (updated: ArticleRecord) => void;
@@ -63,6 +63,25 @@ export function useLibraryArticles(
 
   useEffect(() => {
     void Promise.resolve().then(() => refreshLibrary());
+
+    const handleRuntimeMessage = (message: ExtensionMessage) => {
+      if (
+        message.type === 'ARTICLE_INDEXED' ||
+        message.type === 'DATABASE_UPDATED'
+      ) {
+        void refreshLibrary();
+      }
+    };
+
+    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+      chrome.runtime.onMessage.addListener(handleRuntimeMessage);
+    }
+
+    return () => {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+        chrome.runtime.onMessage.removeListener(handleRuntimeMessage);
+      }
+    };
   }, [refreshLibrary]);
 
   const toggleStar = useCallback(
@@ -75,6 +94,14 @@ export function useLibraryArticles(
         const updated = await toggleArticleStar(articleId);
         if (updated) {
           onStarToggled?.(updated);
+        }
+        if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+          chrome.runtime
+            .sendMessage({
+              type: 'DATABASE_UPDATED',
+              payload: { reason: 'article_starred', articleId },
+            } satisfies ExtensionMessage)
+            .catch(() => {});
         }
         await refreshLibrary();
         onDataChange?.();
@@ -93,6 +120,14 @@ export function useLibraryArticles(
       try {
         await deleteArticles([articleId]);
         onArticleDeleted?.(articleId);
+        if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+          chrome.runtime
+            .sendMessage({
+              type: 'DATABASE_UPDATED',
+              payload: { reason: 'article_deleted', articleId },
+            } satisfies ExtensionMessage)
+            .catch(() => {});
+        }
         await refreshLibrary();
         onDataChange?.();
       } catch (err) {
@@ -106,6 +141,14 @@ export function useLibraryArticles(
     async (olderThanMs: number = 30 * 24 * 60 * 60 * 1000): Promise<number> => {
       try {
         const deleted = await bulkDeleteUnstarred({ olderThanMs });
+        if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+          chrome.runtime
+            .sendMessage({
+              type: 'DATABASE_UPDATED',
+              payload: { reason: 'bulk_cleanup' },
+            } satisfies ExtensionMessage)
+            .catch(() => {});
+        }
         await refreshLibrary();
         onDataChange?.();
         return deleted;
