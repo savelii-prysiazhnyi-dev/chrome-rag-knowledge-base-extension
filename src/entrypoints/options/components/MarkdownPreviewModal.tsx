@@ -54,7 +54,7 @@ export function MarkdownPreviewModal({
               type="button"
               onClick={() => void handleCopy()}
               disabled={isLoading}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-2xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50"
               title="Copy Markdown with YAML frontmatter"
             >
               {copied ? (
@@ -72,7 +72,7 @@ export function MarkdownPreviewModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
               aria-label="Close modal"
             >
               <X className="h-5 w-5" />

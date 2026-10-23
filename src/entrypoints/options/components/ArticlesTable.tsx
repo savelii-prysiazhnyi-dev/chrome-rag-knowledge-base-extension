@@ -71,14 +71,14 @@ export function ArticlesTable({
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Filter articles by title, domain, or concept..."
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-3 pl-9 text-xs text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-3 pl-9 text-xs text-slate-900 placeholder-slate-400 focus:border-slate-400 focus:bg-white focus:ring-1 focus:ring-slate-300/60 focus:outline-hidden"
             />
           </div>
 
           <select
             value={selectedDomain}
             onChange={e => setSelectedDomain(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-indigo-500 focus:bg-white focus:outline-hidden"
+            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 focus:border-slate-400 focus:bg-white focus:outline-hidden"
           >
             <option value="all">All Domains ({articles.length})</option>
             {domainCounts.map(({ siteName, count }) => (
@@ -152,7 +152,7 @@ export function ArticlesTable({
                   checked={allVisibleSelected}
                   disabled={filteredArticles.length === 0}
                   onChange={onToggleSelectAll}
-                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  className="rounded border-slate-300 text-cyan-700 focus:ring-cyan-600"
                 />
               </th>
               <th scope="col" className="px-4 py-3 font-semibold">

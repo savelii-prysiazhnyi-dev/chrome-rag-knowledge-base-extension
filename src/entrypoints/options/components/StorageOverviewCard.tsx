@@ -37,13 +37,13 @@ export function StorageOverviewCard({
     ? 'bg-rose-600'
     : quotaStatus?.isWarning
       ? 'bg-amber-500'
-      : 'bg-indigo-600';
+      : 'bg-cyan-700';
 
   return (
     <section className="mb-8 rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700">
             <HardDrive className="h-6 w-6" />
           </div>
           <div>
@@ -94,7 +94,7 @@ export function StorageOverviewCard({
         {quotaStatus?.modelCacheUsageBytes !== undefined &&
           quotaStatus.modelCacheUsageBytes > 0 && (
             <div className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-400" />
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-600" />
               <span>
                 On-Device AI Model Cache:{' '}
                 {(quotaStatus.modelCacheUsageBytes / (1024 * 1024)).toFixed(1)}{' '}
@@ -118,7 +118,7 @@ export function StorageOverviewCard({
               onClick={() => void onSaveCap(preset)}
               className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                 maxMB === preset
-                  ? 'bg-indigo-600 text-white'
+                  ? 'bg-cyan-700 text-white hover:bg-cyan-800'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
               } disabled:opacity-50`}
             >
@@ -142,13 +142,13 @@ export function StorageOverviewCard({
             value={capInputMB}
             onChange={e => setCapInputMB(e.target.value)}
             disabled={Boolean(quotaStatus?.isLowPhysicalDisk)}
-            className="w-24 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:border-indigo-500 focus:bg-white focus:outline-hidden"
+            className="w-24 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:border-slate-400 focus:bg-white focus:ring-1 focus:ring-slate-300/60 focus:outline-hidden"
           />
           <button
             type="button"
             disabled={Boolean(quotaStatus?.isLowPhysicalDisk)}
             onClick={() => void onSaveCap()}
-            className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+            className="rounded-lg bg-cyan-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-cyan-800 disabled:opacity-50"
           >
             Save Cap
           </button>

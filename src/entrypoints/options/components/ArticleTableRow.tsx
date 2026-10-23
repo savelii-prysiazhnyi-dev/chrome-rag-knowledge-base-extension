@@ -23,7 +23,7 @@ export function ArticleTableRow({
   return (
     <tr
       className={`transition-colors hover:bg-slate-50 ${
-        isSelected ? 'bg-indigo-50/40' : ''
+        isSelected ? 'bg-cyan-50/30' : ''
       }`}
     >
       <td className="px-4 py-3">
@@ -31,7 +31,7 @@ export function ArticleTableRow({
           type="checkbox"
           checked={isSelected}
           onChange={() => onToggleSelect(article.id)}
-          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+          className="rounded border-slate-300 text-cyan-700 focus:ring-cyan-600"
         />
       </td>
       <td className="max-w-md px-4 py-3">
@@ -50,7 +50,7 @@ export function ArticleTableRow({
               href={article.url}
               target="_blank"
               rel="noreferrer"
-              className="line-clamp-1 font-semibold text-slate-900 hover:text-indigo-600"
+              className="line-clamp-1 font-semibold text-slate-900 hover:text-slate-900"
             >
               {article.title}
             </a>
@@ -106,7 +106,7 @@ export function ArticleTableRow({
           <button
             type="button"
             onClick={() => onOpenPreview(article)}
-            className="rounded p-1.5 text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
+            className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-800"
             title="Read Distilled Markdown"
           >
             <FileText className="h-4 w-4" />

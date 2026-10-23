@@ -65,7 +65,7 @@ The Side Panel acts as an always-available reading companion synchronized with t
 
 ## 3. Full-Screen Knowledge Manager (`src/entrypoints/options/`)
 
-The Options page (`options.html`) provides high-density management for larger libraries:
+The Options page (`options.html`) provides high-density management for larger libraries. The modernized design system shares the **cyan** primary accent palette (`cyan-700`, `cyan-800`, `cyan-600`, `cyan-50`) and conservative slate focus/hover styles introduced in the companion Side Panel:
 
 ### Custom Hook (`src/entrypoints/options/hooks/useKnowledgeManager.ts`)
 
@@ -76,13 +76,13 @@ The Options page (`options.html`) provides high-density management for larger li
 
 ### Modular Presentation Components (`src/entrypoints/options/components/`)
 
-- `OptionsHeader.tsx`: Title, subtitle, and 1-click Markdown (`.zip`) and JSON export buttons.
-- `StorageOverviewCard.tsx`: Quota progress bar, article & vector chunk count, physical disk guardrail warning, quick cap presets (`50 MB`–`1 GB`), custom MB cap input, and model cache indicator badge.
+- `OptionsHeader.tsx`: Title ("Second Brain — Full Library"), descriptive subtitle ("Semantic knowledge base in your browser, storage budget, and exports") matching the Side Panel typography without the legacy purple icon container, and 1-click Markdown (`.zip`) and JSON export buttons with cyan icons (`text-cyan-700`).
+- `StorageOverviewCard.tsx`: Cyan storage progress bar (`bg-cyan-700`), cyan `HardDrive` icon container (`bg-cyan-50 text-cyan-700`), article & vector chunk count, physical disk guardrail warning, quick cap presets (`50 MB`–`1 GB`) with cyan active state (`bg-cyan-700 text-white hover:bg-cyan-800`), custom MB cap input with conservative slate focus ring (`focus:border-slate-400 focus:ring-1 focus:ring-slate-300/60`), cyan Save Cap button (`bg-cyan-700 hover:bg-cyan-800`), and cyan model cache indicator dot (`bg-cyan-600`).
 - `BulkCleanupDrawer.tsx`: Age & domain filter selectors, protected starred articles notice, and cleanup trigger button.
-- `ArticlesTable.tsx`: Table layout, search/domain/starred filter controls, multi-select checkboxes, "Delete Selected" button, table header, rows, and empty state.
-- `ArticleTableRow.tsx`: Individual row in the table with checkbox, title, URL, domain, date, reading time, status, star toggle, Markdown preview button, external link, delete.
-- `MarkdownPreviewModal.tsx`: Reads `getArticleContent(articleId)` on demand and renders clean Markdown preview in a modal dialog with 1-click clipboard copy and close actions.
-- `App.tsx`: Clean orchestrator composing `useStorageQuota` and `useKnowledgeManager` (~130 lines).
+- `ArticlesTable.tsx`: Table layout, search and domain filter inputs with conservative slate focus rings (`focus:border-slate-400 focus:ring-1 focus:ring-slate-300/60`), cyan master checkbox (`text-cyan-700 focus:ring-cyan-600`), "Delete Selected" button, table header, rows, and empty state.
+- `ArticleTableRow.tsx`: Individual row in the table with cyan row checkbox, subtle cyan selected background (`bg-cyan-50/30`), article title with conservative hover (`hover:text-slate-900`), Markdown preview button with conservative hover (`hover:bg-slate-100 hover:text-slate-800`), URL, domain, date, reading time, status, star toggle, external link, and delete action.
+- `MarkdownPreviewModal.tsx`: Reads `getArticleContent(articleId)` on demand and renders clean Markdown preview in a modal dialog with conservative slate hover buttons for 1-click clipboard copy and close actions.
+- `App.tsx`: Clean orchestrator composing `useStorageQuota` and `useKnowledgeManager` with dismissible cyan notification banner (`border-cyan-200 bg-cyan-50/70 text-cyan-900`) (~130 lines).
 
 ---
 

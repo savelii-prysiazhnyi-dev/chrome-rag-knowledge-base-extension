@@ -52,15 +52,15 @@ export default function App(): React.JSX.Element {
 
       <main className="mx-auto max-w-7xl px-6 py-8">
         {km.statusBanner && (
-          <div className="mb-6 flex items-center justify-between rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-xs font-medium text-indigo-900">
+          <div className="mb-6 flex items-center justify-between rounded-xl border border-cyan-200 bg-cyan-50/70 px-4 py-3 text-xs font-medium text-cyan-900">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-indigo-600" />
+              <CheckCircle2 className="h-4 w-4 text-cyan-700" />
               <span>{km.statusBanner}</span>
             </div>
             <button
               type="button"
               onClick={() => km.setStatusBanner(null)}
-              className="text-indigo-500 hover:text-indigo-800"
+              className="text-cyan-600 hover:text-cyan-800"
               aria-label="Close notification"
             >
               <X className="h-4 w-4" />

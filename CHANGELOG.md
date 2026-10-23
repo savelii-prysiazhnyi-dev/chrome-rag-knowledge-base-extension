@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Options Page Design System Modernization (Full Library & Knowledge Manager):**
+  - **Header (`OptionsHeader.tsx`):** Removed the legacy purple icon container and `Brain` icon to align with the Side Panel header. Updated title to `"Second Brain — Full Library"` and subtitle to `"Semantic knowledge base in your browser, storage budget, and exports"`. Updated export button icon colors to `text-cyan-700`.
+  - **Notification Banner (`App.tsx`):** Shifted notification alert from indigo to cyan theme (`border-cyan-200 bg-cyan-50/70 text-cyan-900`), with `text-cyan-700` for `CheckCircle2` and `text-cyan-600 hover:text-cyan-800` for dismiss.
+  - **Storage Overview Card (`StorageOverviewCard.tsx`):** Updated `HardDrive` icon container to `bg-cyan-50 text-cyan-700`, default progress bar to `bg-cyan-700`, model cache indicator dot to `bg-cyan-600`, active preset button to `bg-cyan-700 text-white hover:bg-cyan-800`, custom cap input focus to conservative slate (`focus:border-slate-400 focus:ring-1 focus:ring-slate-300/60`), and Save Cap button to `bg-cyan-700 hover:bg-cyan-800 text-white`.
+  - **Articles Table Controls & Rows (`ArticlesTable.tsx` & `ArticleTableRow.tsx`):** Updated search input and domain select focus rings to conservative slate (`focus:border-slate-400 focus:ring-1 focus:ring-slate-300/60`), master and row checkboxes to `text-cyan-700 focus:ring-cyan-600`, selected row background to `bg-cyan-50/30`, article title link hover to conservative `hover:text-slate-900`, and Read Distilled Markdown button hover to conservative `hover:bg-slate-100 hover:text-slate-800`.
+  - **Markdown Preview Modal (`MarkdownPreviewModal.tsx`):** Applied conservative slate hover styles to copy (`hover:bg-slate-50 hover:text-slate-900`) and close (`hover:bg-slate-100 hover:text-slate-700`) buttons.
+  - **Unit Testing:** Added comprehensive component test suite in `src/entrypoints/options/__tests__/optionsComponents.test.tsx` verifying Options header, storage card, table controls, table row states, and Markdown modal copy/close actions.
+
 - **Unified Header Block, Centered Partial Separators & Cyan "All" Filter Pill:**
   - Unified `SidePanelHeader`, `ActiveTabBanner`, and `SearchBar`/`DomainFilterPills` within a single white header container (`<header className="border-b border-slate-200 bg-white px-4 pt-3.5 pb-3">`) in `src/entrypoints/sidepanel/App.tsx`.
   - Removed root `mt-3` margin in `src/entrypoints/sidepanel/components/ActiveTabBanner.tsx` and wrapped both partial dull grey dividers in `<div className="my-3 flex items-center justify-center"><div className="h-px w-3/5 bg-slate-200" /></div>` to achieve 100% vertical centering between sections.
