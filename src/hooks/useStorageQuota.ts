@@ -34,16 +34,6 @@ export function useStorageQuota(): UseStorageQuotaReturn {
 
   const updateCap = useCallback(
     async (newCapBytes: number): Promise<void> => {
-      const mb = newCapBytes / (1024 * 1024);
-      if (
-        mb > 50 &&
-        typeof chrome !== 'undefined' &&
-        chrome.permissions?.request
-      ) {
-        await chrome.permissions
-          .request({ permissions: ['unlimitedStorage'] })
-          .catch(() => false);
-      }
       await updateStorageCap(newCapBytes);
       if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
         chrome.runtime

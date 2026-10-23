@@ -44,7 +44,7 @@ The Side Panel acts as an always-available reading companion synchronized with t
 
 ### Custom Hooks
 
-- **`src/hooks/useStorageQuota.ts`:** Manages `quotaStatus` (`checkStorageQuota`), `refreshQuota`, and `updateCap(newCapBytes)` (with optional `unlimitedStorage` permission requests).
+- **`src/hooks/useStorageQuota.ts`:** Manages `quotaStatus` (`checkStorageQuota`), `refreshQuota`, and `updateCap(newCapBytes)` (software storage budget adjustments).
 - **`src/entrypoints/sidepanel/hooks/useActiveTab.ts`:** Detects active tab ID, URL, title, and queries `CHECK_TAB_STATUS`. Manages `rememberTab()`, `removeTab()`, and `updateTab()`. Subscribes to `chrome.tabs.onActivated`, `chrome.tabs.onUpdated`, `SAVE_STARTED` / `SAVE_FAILED`, `ARTICLE_INDEXED` / `STORAGE_QUOTA_EXCEEDED`, and `DATABASE_UPDATED` messages. Registers window `keydown` listener for `Alt+S` to trigger tab saving even when keyboard focus is inside the Side Panel iframe. Exposes `isSaved`, `isSaving`, `saveError`, and tab metadata.
 - **`src/entrypoints/sidepanel/hooks/useSearchAndRelated.ts`:** Manages `searchQuery`, 250ms debounced search, `isSearching`, and `searchResults`. Handles `handleSnippetClick` (canonical tab matching, activating tab, focusing window via `chrome.windows.update`, or opening new tab).
 - **`src/entrypoints/sidepanel/hooks/useLibraryArticles.ts`:** Manages `articles`, `domainCounts`, `filter` (`all` vs `starred`), `domainFilter`, `toggleStar`, `deleteArticle`, and `quickCleanupOldUnstarred`.

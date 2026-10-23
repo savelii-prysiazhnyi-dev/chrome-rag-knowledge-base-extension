@@ -65,7 +65,6 @@ export default defineConfig({
       'scripting',
     ],
     host_permissions: ['http://*/*', 'https://*/*'],
-    optional_permissions: ['unlimitedStorage' as never],
     content_security_policy: {
       extension_pages:
         "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",

@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Omit Invalid `optional_permissions: ['unlimitedStorage']`:**
+  - Removed `optional_permissions: ['unlimitedStorage']` from `wxt.config.ts` to eliminate Chrome's manifest warning (`Permission 'unlimitedStorage' cannot be listed as optional. This permission will be omitted.`).
+  - Removed dead `chrome.permissions.request({ permissions: ['unlimitedStorage'] })` call in `src/hooks/useStorageQuota.ts` (`updateCap`), streamlining software budget expansion and cross-window quota synchronization.
+  - Updated storage architecture and UI documentation in `docs/ui-and-export-architecture.md` and `README.md`.
+
 - **Side Panel Content Extraction Host Permissions:**
   - Added `host_permissions: ['http://*/*', 'https://*/*']` to `manifest` in `wxt.config.ts`.
   - In Manifest V3, clicks inside the Side Panel (an extension document iframe) do not grant an active user gesture (`activeTab`) to the host webpage. When saving a page from a tab opened before extension installation/reload (or after context invalidation), the background coordinator's dynamic script injection fallback (`chrome.scripting.executeScript`) previously failed with `Cannot access contents of url "...". Extension manifest must request permission to access this host.`
