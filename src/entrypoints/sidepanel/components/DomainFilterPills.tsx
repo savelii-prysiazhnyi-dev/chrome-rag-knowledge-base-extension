@@ -62,7 +62,7 @@ export function DomainFilterPills({
         }}
         className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
           !starredOnly && !domainFilter
-            ? 'bg-slate-900 text-white'
+            ? 'bg-cyan-700 text-white shadow-2xs hover:bg-cyan-800'
             : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
         }`}
       >

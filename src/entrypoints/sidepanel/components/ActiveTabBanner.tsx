@@ -37,7 +37,7 @@ export function ActiveTabBanner({
   }, [activeTabUrl]);
 
   return (
-    <div className="mt-3 flex flex-col gap-2.5">
+    <div className="flex flex-col gap-2.5">
       {/* Active Tab Link & Copy Component */}
       <button
         type="button"

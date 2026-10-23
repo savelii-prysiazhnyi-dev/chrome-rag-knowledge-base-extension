@@ -215,6 +215,10 @@ describe('Side Panel Modernized Components', () => {
       expect(container.textContent).not.toContain('github.com (4)');
 
       const buttons = Array.from(container.querySelectorAll('button'));
+      const allBtn = buttons.find(b => b.textContent?.trim() === 'All');
+      expect(allBtn?.className).toContain('bg-cyan-700');
+      expect(allBtn?.className).toContain('text-white');
+
       const domainBtn = buttons.find(b => b.textContent?.includes('Domain'));
       expect(domainBtn).toBeDefined();
 

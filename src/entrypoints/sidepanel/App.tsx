@@ -126,9 +126,11 @@ export default function App(): React.JSX.Element {
 
   return (
     <div className="flex h-screen w-full flex-col bg-slate-50 text-slate-800">
-      <header className="border-b border-slate-200/80 bg-white px-4 pt-3 pb-3">
+      <header className="border-b border-slate-200 bg-white px-4 pt-3.5 pb-3">
         <SidePanelHeader onOpenKnowledgeManager={handleOpenKnowledgeManager} />
-        <div className="mx-auto my-2.5 h-px w-3/5 bg-slate-200" />
+        <div className="my-3 flex items-center justify-center">
+          <div className="h-px w-3/5 bg-slate-200" />
+        </div>
         <ActiveTabBanner
           savedArticle={activeTab.savedArticle}
           activeTabUrl={activeTab.activeTabUrl}
@@ -138,9 +140,9 @@ export default function App(): React.JSX.Element {
           onRemove={() => void handleRemoveActiveTab()}
           onDismissError={() => activeTab.setSaveError(null)}
         />
-      </header>
-
-      <div className="border-b border-slate-200 bg-white px-4 pt-0.5 pb-3">
+        <div className="my-3 flex items-center justify-center">
+          <div className="h-px w-3/5 bg-slate-200" />
+        </div>
         <SearchBar
           value={search.searchQuery}
           onChange={search.setSearchQuery}
@@ -161,7 +163,7 @@ export default function App(): React.JSX.Element {
             )
           }
         />
-      </div>
+      </header>
 
       <main className="flex-1 overflow-y-auto p-3">
         {search.isSearchingMode ? (

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Unified Header Block, Centered Partial Separators & Cyan "All" Filter Pill:**
+  - Unified `SidePanelHeader`, `ActiveTabBanner`, and `SearchBar`/`DomainFilterPills` within a single white header container (`<header className="border-b border-slate-200 bg-white px-4 pt-3.5 pb-3">`) in `src/entrypoints/sidepanel/App.tsx`.
+  - Removed root `mt-3` margin in `src/entrypoints/sidepanel/components/ActiveTabBanner.tsx` and wrapped both partial dull grey dividers in `<div className="my-3 flex items-center justify-center"><div className="h-px w-3/5 bg-slate-200" /></div>` to achieve 100% vertical centering between sections.
+  - Updated the active state fill color of the "All" filter pill in `src/entrypoints/sidepanel/components/DomainFilterPills.tsx` to cyan (`bg-cyan-700 text-white shadow-2xs hover:bg-cyan-800`), visually aligning it with active domain filter pills.
+  - Added test coverage in `src/entrypoints/sidepanel/__tests__/sidepanelComponents.test.tsx` verifying the active cyan styling on the "All" button.
+
 - **Refined Header Separator Placement, Copied Badge & Selection Highlights:**
   - Repositioned dull grey middle separator (`<div className="mx-auto my-2.5 h-px w-3/5 bg-slate-200" />`) in `src/entrypoints/sidepanel/App.tsx` between `SidePanelHeader` and `ActiveTabBanner`, framing the header block cleanly with `border-b border-slate-200/80 bg-white px-4 pt-3 pb-3`.
   - Softened active tab copied URL badge styling in `src/entrypoints/sidepanel/components/ActiveTabBanner.tsx` from vivid cyan to conservative slate (`bg-slate-200/80 text-slate-700 font-medium`).
