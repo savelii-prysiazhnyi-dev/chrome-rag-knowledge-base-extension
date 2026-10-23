@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Shortcut & Cross-Context Loading State Synchronization (`Alt+S`):**
+  - Extended `ExtensionMessage` with `SAVE_STARTED` (`{ tabId: number; url?: string }`) and `SAVE_FAILED` (`{ tabId: number; result: SaveTabResult }`) message contracts and exported `SaveTabResult` in `src/types/messages.ts`.
+  - Updated background coordinator (`src/entrypoints/background/coordinator.ts`) to broadcast `SAVE_STARTED` upon initiating tab extraction/indexing, and `SAVE_FAILED` upon incognito restrictions, extraction failures, quota blocks, or unexpected runtime exceptions.
+  - Enhanced `src/entrypoints/sidepanel/hooks/useActiveTab.ts` to listen for `SAVE_STARTED` and `SAVE_FAILED`, activating the `"Saving..."` loading spinner and disabled state across the Side Panel UI when `Alt+S` is triggered from web pages via `chrome.commands`, and resetting `isSaving` upon `DATABASE_UPDATED` or `SAVE_FAILED`.
+  - Added an in-panel `window.addEventListener('keydown', ...)` listener in `useActiveTab.ts` to capture `Alt+S` when focus is held inside the Side Panel extension window and delegate to `saveOrUpdateTab()`.
+
 - **Phase 5: Side Panel UI, Quota Prompt Modal, Background Search/Badge Routing & Full-Screen Knowledge Manager:**
   - Installed `fflate` in `dependencies` and implemented pure client-side export utilities in `src/lib/export/index.ts` (`formatArticleMarkdownWithFrontmatter`, `sanitizeExportFilename`, `buildMarkdownZipArchive`, `buildJsonExportPayload`, `triggerBrowserDownload`) with 5 unit tests in `src/lib/export/__tests__/export.test.ts`.
   - Enhanced `src/entrypoints/background/index.ts` with on-demand Offscreen Document creation and message forwarding for `SEARCH_QUERY` and `FIND_RELATED_ARTICLES`, live `✓` toolbar badge synchronization on `chrome.tabs.onActivated` and `chrome.tabs.onUpdated`, and `DELETE_ARTICLES` / `UPDATE_STORAGE_CAP` message handlers.

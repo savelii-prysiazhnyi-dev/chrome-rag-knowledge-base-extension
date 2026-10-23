@@ -51,6 +51,10 @@ describe('coordinator.saveTab', () => {
     const { deps, c } = setup();
     const r = await c.saveTab(1);
     expect(r).toEqual({ status: 'indexing', articleId: 'hash' });
+    expect(deps.emit).toHaveBeenCalledWith({
+      type: 'SAVE_STARTED',
+      payload: { tabId: 1, url: undefined },
+    });
     const [article, , status] = vi.mocked(deps.upsertArticleWithContent).mock
       .calls[0]!;
     expect(article.faviconUrl).toBe('f.ico');
@@ -84,12 +88,16 @@ describe('coordinator.saveTab', () => {
   });
 
   it('releases lock on error', async () => {
-    const { c } = setup({
+    const { deps, c } = setup({
       getTab: async () => {
         throw new Error('gone');
       },
     });
     expect(await c.saveTab(1)).toEqual({ status: 'error', error: 'gone' });
+    expect(deps.emit).toHaveBeenCalledWith({
+      type: 'SAVE_FAILED',
+      payload: { tabId: 1, result: { status: 'error', error: 'gone' } },
+    });
     expect(c.activeIngestions.size).toBe(0);
   });
 
@@ -98,6 +106,10 @@ describe('coordinator.saveTab', () => {
       getTab: async () => ({ id: 1, incognito: true }),
     });
     expect(await c.saveTab(1)).toEqual({ status: 'incognito_blocked' });
+    expect(deps.emit).toHaveBeenCalledWith({
+      type: 'SAVE_FAILED',
+      payload: { tabId: 1, result: { status: 'incognito_blocked' } },
+    });
     expect(deps.extractPage).not.toHaveBeenCalled();
   });
 
@@ -107,7 +119,35 @@ describe('coordinator.saveTab', () => {
     });
     const r = await c.saveTab(1);
     expect(r).toMatchObject({ status: 'extract_failed', error: 'TOO_SHORT' });
+    expect(deps.emit).toHaveBeenCalledWith({
+      type: 'SAVE_STARTED',
+      payload: { tabId: 1, url: undefined },
+    });
+    expect(deps.emit).toHaveBeenCalledWith({
+      type: 'SAVE_FAILED',
+      payload: { tabId: 1, result: r },
+    });
     expect(deps.upsertArticleWithContent).not.toHaveBeenCalled();
+  });
+
+  it('emits SAVE_FAILED when extraction returns no response', async () => {
+    const { deps, c } = setup({
+      extractPage: async () => undefined,
+    });
+    const r = await c.saveTab(1);
+    expect(r).toMatchObject({
+      status: 'extract_failed',
+      error: 'EXTRACTION_FAILED',
+      reason: 'No response from content script',
+    });
+    expect(deps.emit).toHaveBeenCalledWith({
+      type: 'SAVE_STARTED',
+      payload: { tabId: 1, url: undefined },
+    });
+    expect(deps.emit).toHaveBeenCalledWith({
+      type: 'SAVE_FAILED',
+      payload: { tabId: 1, result: r },
+    });
   });
 
   it('stops without writes when quota exceeded', async () => {
@@ -121,6 +161,10 @@ describe('coordinator.saveTab', () => {
     });
     expect(await c.saveTab(1)).toEqual({ status: 'quota_exceeded' });
     expect(deps.emit).toHaveBeenCalledWith({
+      type: 'SAVE_STARTED',
+      payload: { tabId: 1, url: undefined },
+    });
+    expect(deps.emit).toHaveBeenCalledWith({
       type: 'STORAGE_QUOTA_EXCEEDED',
       payload: {
         currentUsageBytes: 9,
@@ -128,6 +172,10 @@ describe('coordinator.saveTab', () => {
         requiredBytes: 100,
         suggestedNewCapBytes: 20,
       },
+    });
+    expect(deps.emit).toHaveBeenCalledWith({
+      type: 'SAVE_FAILED',
+      payload: { tabId: 1, result: { status: 'quota_exceeded' } },
     });
     expect(deps.upsertArticleWithContent).not.toHaveBeenCalled();
     expect(deps.sendToOffscreen).not.toHaveBeenCalled();

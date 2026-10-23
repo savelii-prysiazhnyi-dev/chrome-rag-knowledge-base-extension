@@ -3,17 +3,11 @@ import type {
   ArticleRecord,
   ExtensionMessage,
   ExtractPageResponse,
+  SaveTabResult,
   StorageQuotaStatus,
 } from '../../types/messages';
 
-export type SaveTabResult =
-  | { status: 'already_processing' }
-  | { status: 'no_tab' }
-  | { status: 'incognito_blocked' }
-  | { status: 'extract_failed'; error: string; reason?: string }
-  | { status: 'quota_exceeded' }
-  | { status: 'indexing'; articleId: string }
-  | { status: 'error'; error: string };
+export type { SaveTabResult };
 
 export interface TabLike {
   id?: number;
@@ -54,22 +48,32 @@ export function createCoordinator(deps: CoordinatorDeps) {
 
   async function run(tabId: number): Promise<SaveTabResult> {
     const tab = await deps.getTab(tabId);
-    if (tab.incognito) return { status: 'incognito_blocked' };
+    if (tab.incognito) {
+      const result: SaveTabResult = { status: 'incognito_blocked' };
+      deps.emit({ type: 'SAVE_FAILED', payload: { tabId, result } });
+      return result;
+    }
+
+    deps.emit({ type: 'SAVE_STARTED', payload: { tabId, url: tab.url } });
 
     const extracted = await deps.extractPage(tabId);
     if (!extracted) {
-      return {
+      const result: SaveTabResult = {
         status: 'extract_failed',
         error: 'EXTRACTION_FAILED',
         reason: 'No response from content script',
       };
+      deps.emit({ type: 'SAVE_FAILED', payload: { tabId, result } });
+      return result;
     }
     if (!extracted.ok) {
-      return {
+      const result: SaveTabResult = {
         status: 'extract_failed',
         error: extracted.error,
         reason: extracted.reason,
       };
+      deps.emit({ type: 'SAVE_FAILED', payload: { tabId, result } });
+      return result;
     }
 
     const id = await deps.hashUrl(extracted.canonicalUrl);
@@ -105,7 +109,9 @@ export function createCoordinator(deps: CoordinatorDeps) {
           suggestedNewCapBytes: quota.suggestedNewCapBytes,
         },
       });
-      return { status: 'quota_exceeded' };
+      const result: SaveTabResult = { status: 'quota_exceeded' };
+      deps.emit({ type: 'SAVE_FAILED', payload: { tabId, result } });
+      return result;
     }
 
     await deps.upsertArticleWithContent(article, content, 'indexing');
@@ -129,10 +135,12 @@ export function createCoordinator(deps: CoordinatorDeps) {
     try {
       return await run(tabId);
     } catch (err) {
-      return {
+      const result: SaveTabResult = {
         status: 'error',
         error: err instanceof Error ? err.message : String(err),
       };
+      deps.emit({ type: 'SAVE_FAILED', payload: { tabId, result } });
+      return result;
     } finally {
       activeIngestions.delete(tabId);
     }

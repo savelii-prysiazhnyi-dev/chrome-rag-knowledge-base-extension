@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { deleteArticles } from '../../../db';
 import type { SaveTabResult } from '../../background/coordinator';
 import type {
@@ -76,6 +76,17 @@ export function useActiveTab(
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  const activeTabIdRef = useRef<number | undefined>(activeTabId);
+  const activeTabUrlRef = useRef<string>(activeTabUrl);
+
+  useEffect(() => {
+    activeTabIdRef.current = activeTabId;
+  }, [activeTabId]);
+
+  useEffect(() => {
+    activeTabUrlRef.current = activeTabUrl;
+  }, [activeTabUrl]);
+
   const refreshActiveTab = useCallback(async () => {
     if (typeof chrome === 'undefined' || !chrome.tabs?.query) return;
     try {
@@ -85,9 +96,11 @@ export function useActiveTab(
       });
       const currentTab = tabs[0];
       setActiveTabId(currentTab?.id);
+      activeTabIdRef.current = currentTab?.id;
       const url = currentTab?.url ?? '';
       const title = currentTab?.title ?? '';
       setActiveTabUrl(url);
+      activeTabUrlRef.current = url;
       setActiveTabTitle(title);
 
       if (
@@ -190,12 +203,33 @@ export function useActiveTab(
     };
 
     const handleRuntimeMessage = (message: ExtensionMessage) => {
-      if (message.type === 'ARTICLE_INDEXED') {
+      if (message.type === 'SAVE_STARTED') {
+        const matchesTab =
+          (activeTabIdRef.current !== undefined &&
+            message.payload.tabId === activeTabIdRef.current) ||
+          Boolean(
+            activeTabUrlRef.current &&
+            message.payload.url === activeTabUrlRef.current,
+          );
+        if (matchesTab) {
+          setSaveError(null);
+          setIsSaving(true);
+        }
+      } else if (message.type === 'SAVE_FAILED') {
+        const matchesTab =
+          activeTabIdRef.current !== undefined &&
+          message.payload.tabId === activeTabIdRef.current;
+        if (matchesTab) {
+          setIsSaving(false);
+          setSaveError(describeSaveError(message.payload.result));
+        }
+      } else if (message.type === 'ARTICLE_INDEXED') {
         setIsSaving(false);
         void refreshActiveTab();
         onArticleIndexed?.(message.payload);
         onDataChange?.();
       } else if (message.type === 'DATABASE_UPDATED') {
+        setIsSaving(false);
         void refreshActiveTab();
         onDataChange?.();
       } else if (message.type === 'STORAGE_QUOTA_EXCEEDED') {
@@ -215,6 +249,26 @@ export function useActiveTab(
       chrome.runtime?.onMessage?.removeListener(handleRuntimeMessage);
     };
   }, [onArticleIndexed, onDataChange, onQuotaExceeded, refreshActiveTab]);
+
+  // Keyboard shortcut listener ('Alt+S') inside side panel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        (e.key === 's' || e.key === 'S') &&
+        e.altKey &&
+        !e.ctrlKey &&
+        !e.metaKey
+      ) {
+        e.preventDefault();
+        void saveOrUpdateTab();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [saveOrUpdateTab]);
 
   return {
     activeTabId,

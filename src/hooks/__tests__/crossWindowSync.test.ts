@@ -402,5 +402,143 @@ describe('Cross-Window Real-Time Synchronization', () => {
       });
       hook.unmount();
     });
+
+    it('enters saving loading state on SAVE_STARTED and clears on DATABASE_UPDATED', async () => {
+      const hook = renderTestHook(() => useActiveTab());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(hook.result.isSaving).toBe(false);
+
+      await act(async () => {
+        for (const listener of runtimeMessageListeners) {
+          listener({
+            type: 'SAVE_STARTED',
+            payload: { tabId: 10, url: 'https://example.com/1' },
+          });
+        }
+      });
+
+      expect(hook.result.isSaving).toBe(true);
+      expect(hook.result.saveError).toBeNull();
+
+      await act(async () => {
+        for (const listener of runtimeMessageListeners) {
+          listener({
+            type: 'DATABASE_UPDATED',
+            payload: { reason: 'article_saved', articleId: 'art-1' },
+          });
+        }
+      });
+
+      expect(hook.result.isSaving).toBe(false);
+      hook.unmount();
+    });
+
+    it('clears saving state and sets saveError on SAVE_FAILED', async () => {
+      const hook = renderTestHook(() => useActiveTab());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      await act(async () => {
+        for (const listener of runtimeMessageListeners) {
+          listener({
+            type: 'SAVE_STARTED',
+            payload: { tabId: 10, url: 'https://example.com/1' },
+          });
+        }
+      });
+
+      expect(hook.result.isSaving).toBe(true);
+
+      await act(async () => {
+        for (const listener of runtimeMessageListeners) {
+          listener({
+            type: 'SAVE_FAILED',
+            payload: {
+              tabId: 10,
+              result: {
+                status: 'extract_failed',
+                error: 'NOT_READABLE',
+              },
+            },
+          });
+        }
+      });
+
+      expect(hook.result.isSaving).toBe(false);
+      expect(hook.result.saveError).toBe(
+        'Could not extract a readable article from this page.',
+      );
+      hook.unmount();
+    });
+
+    it('triggers saveOrUpdateTab on Alt+S keyboard event', async () => {
+      const hook = renderTestHook(() => useActiveTab());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      await act(async () => {
+        const event = new KeyboardEvent('keydown', {
+          key: 's',
+          altKey: true,
+          bubbles: true,
+          cancelable: true,
+        });
+        window.dispatchEvent(event);
+      });
+
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+        type: 'SAVE_ACTIVE_TAB',
+      });
+      hook.unmount();
+    });
+
+    it('ignores keydown when Alt is not pressed or other modifiers are active', async () => {
+      const hook = renderTestHook(() => useActiveTab());
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      vi.mocked(chrome.runtime.sendMessage).mockClear();
+
+      await act(async () => {
+        window.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 's',
+            altKey: false,
+            bubbles: true,
+          }),
+        );
+        window.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 's',
+            altKey: true,
+            ctrlKey: true,
+            bubbles: true,
+          }),
+        );
+        window.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 's',
+            altKey: true,
+            metaKey: true,
+            bubbles: true,
+          }),
+        );
+      });
+
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalledWith({
+        type: 'SAVE_ACTIVE_TAB',
+      });
+      hook.unmount();
+    });
   });
 });

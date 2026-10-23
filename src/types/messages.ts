@@ -109,9 +109,20 @@ export interface SearchResultItem {
   score: number;
 }
 
+export type SaveTabResult =
+  | { status: 'already_processing' }
+  | { status: 'no_tab' }
+  | { status: 'incognito_blocked' }
+  | { status: 'extract_failed'; error: string; reason?: string }
+  | { status: 'quota_exceeded' }
+  | { status: 'indexing'; articleId: string }
+  | { status: 'error'; error: string };
+
 // Internal IPC Messaging Protocol (chrome.runtime.sendMessage)
 export type ExtensionMessage =
   | { type: 'SAVE_ACTIVE_TAB' }
+  | { type: 'SAVE_STARTED'; payload: { tabId: number; url?: string } }
+  | { type: 'SAVE_FAILED'; payload: { tabId: number; result: SaveTabResult } }
   | { type: 'EXTRACT_PAGE' }
   | {
       type: 'INDEX_PAGE_DATA';
