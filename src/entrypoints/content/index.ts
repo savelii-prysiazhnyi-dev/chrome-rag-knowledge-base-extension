@@ -48,11 +48,6 @@ export default defineContentScript({
           return true;
         }
 
-        if (message.type === 'SCROLL_AND_HIGHLIGHT') {
-          sendResponse({ status: 'received' });
-          return true;
-        }
-
         return false;
       },
     );

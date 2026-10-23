@@ -85,7 +85,6 @@ Building a privacy-first, local-first semantic retrieval system within these con
 - **Key Responsibilities:**
   1. **Non-Destructive Extraction:** Uses `document.cloneNode(true)` to extract clean article text, metadata, and Markdown (`@mozilla/readability` + `DOMPurify` + `turndown`) without touching the live page DOM.
   2. **Recursive Token-Safe Chunking:** Splits plain text into ~150–180 word overlapping passages respecting sentence boundaries to stay within the 256-token limit of `all-MiniLM-L6-v2`.
-  3. **Click-to-Jump In-Page Highlighting:** Listens for `SCROLL_AND_HIGHLIGHT` messages from the Side Panel, locates the snippet using text normalization, scrolls into view, and highlights matches with the **CSS Custom Highlight API** (`CSS.highlights`).
 
 ### 3.3 Offscreen Document (`src/entrypoints/offscreen/index.html` & `main.ts`)
 

@@ -137,12 +137,11 @@ The extension follows Manifest V3 specifications, dividing responsibilities acro
 
 ### 4.1 Content Script (`src/entrypoints/content`)
 
-- **Role:** Distills article content when triggered by the user and handles in-page deep-link highlighting.
+- **Role:** Distills article content when triggered by the user.
 - **Mechanisms:**
   - Clones `document.cloneNode(true)` and runs `@mozilla/readability` to isolate article title, author, HTML body, plain text, and metadata without mutating the live page.
   - Sanitizes extracted HTML with `DOMPurify` and converts it to clean Markdown via `turndown` (used for `.md` exports).
   - **Token-Safe Recursive Chunking:** Splits article text along paragraph and sentence boundaries into **~150–180 word chunks (~750 characters)** with a **30-word sliding window overlap**. This guarantees chunks stay safely within the **256 WordPiece token limit** of `all-MiniLM-L6-v2` (even for code-heavy technical articles) without silent truncation.
-  - **In-Page Highlighting:** Listens for `SCROLL_AND_HIGHLIGHT` messages, locates the target snippet in the DOM via text-node normalization / `CSS.highlights` (or `window.find` fallback), scrolls smoothly into view, and applies a yellow highlight style.
 
 ### 4.2 Background Service Worker (`src/entrypoints/background`)
 
@@ -233,7 +232,7 @@ The extension follows Manifest V3 specifications, dividing responsibilities acro
    $$\text{Score} = \alpha \cdot \text{CosineSimilarity}(q, c) + (1 - \alpha) \cdot \text{LexicalMatch}(q, c)$$
    where $\alpha = 0.75$ and candidate matches require $\text{CosineSimilarity} \ge 0.35$.
 5. Matching chunks are grouped by `articleId`, joined with `articles` metadata, and returned to the Side Panel.
-6. User clicks a snippet -> Background opens/focuses the tab and sends `SCROLL_AND_HIGHLIGHT` to the Content Script -> Page scrolls smoothly to the paragraph and highlights it in yellow.
+6. User clicks a snippet -> Side Panel finds or opens the tab and focuses the window via `chrome.windows.update`.
 
 ### Flow 3: Exporting the Knowledge Base
 
@@ -385,7 +384,6 @@ export type ExtensionMessage =
       type: 'FIND_RELATED_ARTICLES';
       payload: { text: string; excludeArticleId?: string; topK?: number };
     }
-  | { type: 'SCROLL_AND_HIGHLIGHT'; payload: { snippet: string } }
   | { type: 'DELETE_ARTICLES'; payload: { articleIds: string[] } }
   | { type: 'CHECK_TAB_STATUS'; payload: { url: string } };
 ```

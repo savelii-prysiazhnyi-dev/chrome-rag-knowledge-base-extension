@@ -27,12 +27,11 @@ sequenceDiagram
             SW->>SidePanel: Update toolbar badge (✓) & refresh Side Panel contextual banner
         end
 
-        Note over User,SidePanel: User searches & jumps to highlighted passage
+        Note over User,SidePanel: User searches & opens article
         User->>SidePanel: Types query: "prevent Go race condition"
         SidePanel->>Offscreen: Search request ({ type: "SEARCH_QUERY", target: "offscreen", payload })
         Offscreen->>Offscreen: Embed query into Float32Array(384)
         Offscreen->>DB: Scan chunks & compute Hybrid Score (Cosine Similarity + Lexical Match)
         Offscreen-->>SidePanel: Ranked matching articles & best snippets
         User->>SidePanel: Clicks matching snippet card
-        SidePanel->>Page: Focus tab & send { type: "SCROLL_AND_HIGHLIGHT", snippet }
-        Page->>Page: Scroll smoothly & highlight passage via CSS Custom Highlight API
+        SidePanel->>Page: Activate tab & focus window (or create new tab)

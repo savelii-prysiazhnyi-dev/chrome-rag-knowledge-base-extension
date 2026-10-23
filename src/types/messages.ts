@@ -173,7 +173,6 @@ export type ExtensionMessage =
       target?: 'offscreen';
       payload: { text: string; excludeArticleId?: string; topK?: number };
     }
-  | { type: 'SCROLL_AND_HIGHLIGHT'; payload: { snippet: string } }
   | { type: 'DELETE_ARTICLES'; payload: { articleIds: string[] } }
   | { type: 'CHECK_TAB_STATUS'; payload: { url: string } };
 

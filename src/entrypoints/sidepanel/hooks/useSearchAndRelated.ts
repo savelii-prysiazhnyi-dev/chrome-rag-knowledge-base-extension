@@ -4,6 +4,7 @@ import type {
   ExtensionMessage,
   SearchResultItem,
 } from '../../../types/messages';
+import { canonicalizeUrl } from '../../../lib/content';
 
 export interface UseSearchAndRelatedOptions {
   activeTabUrl: string;
@@ -156,7 +157,7 @@ export function useSearchAndRelated(
   }, [activeTabUrl, activeTabTitle, hasLibraryArticles, savedArticleId]);
 
   const handleSnippetClick = useCallback(
-    async (url: string, snippet?: string): Promise<void> => {
+    async (url: string, _snippet?: string): Promise<void> => {
       if (typeof chrome === 'undefined' || !chrome.tabs) {
         window.open(url, '_blank', 'noopener,noreferrer');
         return;
@@ -164,25 +165,32 @@ export function useSearchAndRelated(
 
       try {
         const tabs = await chrome.tabs.query({});
-        const existingTab = tabs.find(t => t.url === url);
-        let targetTabId: number | undefined;
-
-        if (existingTab?.id !== undefined) {
-          targetTabId = existingTab.id;
-          await chrome.tabs.update(targetTabId, { active: true });
-        } else {
-          const created = await chrome.tabs.create({ url, active: true });
-          targetTabId = created.id;
+        let targetCanonical = url;
+        try {
+          targetCanonical = canonicalizeUrl(url);
+        } catch {
+          targetCanonical = url;
         }
 
-        if (snippet && targetTabId !== undefined) {
-          const highlightMsg: ExtensionMessage = {
-            type: 'SCROLL_AND_HIGHLIGHT',
-            payload: { snippet },
-          };
-          setTimeout(() => {
-            chrome.tabs.sendMessage(targetTabId, highlightMsg).catch(() => {});
-          }, 450);
+        const existingTab = tabs.find(t => {
+          if (!t.url) return false;
+          if (t.url === url) return true;
+          try {
+            return canonicalizeUrl(t.url) === targetCanonical;
+          } catch {
+            return false;
+          }
+        });
+
+        if (existingTab?.id !== undefined) {
+          await chrome.tabs.update(existingTab.id, { active: true });
+          if (existingTab.windowId !== undefined && chrome.windows?.update) {
+            await chrome.windows
+              .update(existingTab.windowId, { focused: true })
+              .catch(() => {});
+          }
+        } else {
+          await chrome.tabs.create({ url, active: true });
         }
       } catch {
         window.open(url, '_blank', 'noopener,noreferrer');
