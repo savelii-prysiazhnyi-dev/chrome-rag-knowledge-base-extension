@@ -25,8 +25,8 @@ sequenceDiagram
     SP->>IDB: listArticles() + getDomainCounts() + checkStorageQuota()
     IDB-->>SP: Lightweight ArticleRecord[] (~500B each)
 
-    Note over SP,OS: 2. Hybrid Search & Related Past Reading (On-Demand Offscreen Routing)
-    SP->>BG: SEARCH_QUERY / FIND_RELATED_ARTICLES (no target)
+    Note over SP,OS: 2. Hybrid Search (On-Demand Offscreen Routing)
+    SP->>BG: SEARCH_QUERY (no target)
     BG->>BG: await ensureOffscreenDocument()
     BG->>OS: Forward with target: 'offscreen'
     OS->>OS: embedder.embedOne(query) -> Float32Array(384)
@@ -40,27 +40,26 @@ sequenceDiagram
 
 ## 2. Side Panel Companion UI (`src/entrypoints/sidepanel/`)
 
-The Side Panel acts as an always-available reading companion synchronized with the user's active browser tab. Business logic and UI state are decoupled into specialized custom hooks and focused presentation components:
+The Side Panel acts as an always-available reading companion synchronized with the user's active browser tab. The modernized interface uses a **cyan** primary accent palette (`cyan-700`, `cyan-800`, `cyan-600`, `cyan-50`) and a simplified, card-free layout. Business logic and UI state are decoupled into specialized custom hooks and focused presentation components:
 
 ### Custom Hooks
 
 - **`src/hooks/useStorageQuota.ts`:** Manages `quotaStatus` (`checkStorageQuota`), `refreshQuota`, and `updateCap(newCapBytes)` (with optional `unlimitedStorage` permission requests).
 - **`src/entrypoints/sidepanel/hooks/useActiveTab.ts`:** Detects active tab ID, URL, title, and queries `CHECK_TAB_STATUS`. Manages `rememberTab()`, `removeTab()`, and `updateTab()`. Subscribes to `chrome.tabs.onActivated`, `chrome.tabs.onUpdated`, `SAVE_STARTED` / `SAVE_FAILED`, `ARTICLE_INDEXED` / `STORAGE_QUOTA_EXCEEDED`, and `DATABASE_UPDATED` messages. Registers window `keydown` listener for `Alt+S` to trigger tab saving even when keyboard focus is inside the Side Panel iframe. Exposes `isSaved`, `isSaving`, `saveError`, and tab metadata.
-- **`src/entrypoints/sidepanel/hooks/useSearchAndRelated.ts`:** Manages `searchQuery`, 250ms debounced search, `isSearching`, and `searchResults`. Manages proactive `relatedArticles` via `FIND_RELATED_ARTICLES`. Handles `handleSnippetClick` (canonical tab matching, activating tab, focusing window via `chrome.windows.update`, or opening new tab).
+- **`src/entrypoints/sidepanel/hooks/useSearchAndRelated.ts`:** Manages `searchQuery`, 250ms debounced search, `isSearching`, and `searchResults`. Handles `handleSnippetClick` (canonical tab matching, activating tab, focusing window via `chrome.windows.update`, or opening new tab).
 - **`src/entrypoints/sidepanel/hooks/useLibraryArticles.ts`:** Manages `articles`, `domainCounts`, `filter` (`all` vs `starred`), `domainFilter`, `toggleStar`, `deleteArticle`, and `quickCleanupOldUnstarred`.
 
 ### Modular Presentation Components (`src/entrypoints/sidepanel/components/`)
 
-- `SidePanelHeader.tsx`: Brand, logo, and full-screen Knowledge Manager launcher button.
-- `ActiveTabBanner.tsx`: Saved status dot, date, reading time, `[Update]` and `[Remove]` buttons vs `[Remember Alt+S]`, saving spinner, and error banner.
-- `RelatedArticlesStrip.tsx`: Compact cards for proactive related past reading with relevance match percentages.
-- `SearchBar.tsx`: Input with search icon, clear button.
-- `DomainFilterPills.tsx`: `All`, `Starred`, dynamic domain pills with counts.
-- `ArticleCard.tsx`: Individual card in library feed (favicon, title, siteName, relative date, excerpt, reading time, star toggle, delete).
-- `SearchResultCard.tsx`: Scored snippet card (% match badge, title, domain, highlighted snippet passage, click-to-jump).
-- `StorageFooter.tsx`: Quota progress bar, usage text, "Export Data" button.
+- `SidePanelHeader.tsx`: Brand "Second Brain", descriptive subtitle "Semantic knowledge base in your browser", and "Full Library" launcher button without extra icons.
+- `ActiveTabBanner.tsx`: Thin rounded URL copy pill with 2-second "Copied!" feedback, de-unified saved/not-saved status indicator (green/amber dot + reading time + indexing state), text-only cyan action buttons (`Remember`, `Update`, `Delete`), and dismissible error banner.
+- `SearchBar.tsx`: Input with search icon, clear button, and cyan focus indicators.
+- `DomainFilterPills.tsx`: Streamlined `All`, `Starred`, and single `Domain` dropdown selector displaying `{siteName} ({count})` with active cyan pill styling and 1-click clearing.
+- `ArticleCard.tsx`: Individual card in library feed (favicon, title, siteName, relative date, excerpt, reading time, star toggle, delete, cyan hover state).
+- `SearchResultCard.tsx`: Scored result card styled identically to library feed cards (favicon, title, siteName, date, article excerpt, text-only cyan `% match` indicator without raw snippet boxes).
+- `StorageFooter.tsx`: Quota progress bar, usage text, cyan "Export Data" button.
 - `StorageQuotaModal.tsx`: Quota warning/exceeded modal (allocate custom MB vs clean up space).
-- `App.tsx`: Concise, declarative orchestrator composing the hooks and components (~240 lines).
+- `App.tsx`: Concise, declarative orchestrator composing the hooks and components (~230 lines).
 
 ---
 

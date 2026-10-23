@@ -7,10 +7,6 @@ import type {
 import { canonicalizeUrl } from '../../../lib/content';
 
 export interface UseSearchAndRelatedOptions {
-  activeTabUrl: string;
-  activeTabTitle: string;
-  savedArticleId?: string;
-  hasLibraryArticles?: boolean;
   domainFilter?: string;
   starredOnly?: boolean;
 }
@@ -22,8 +18,6 @@ export interface UseSearchAndRelatedReturn {
   isSearching: boolean;
   searchResults: SearchResultItem[];
   setSearchResults: React.Dispatch<React.SetStateAction<SearchResultItem[]>>;
-  relatedArticles: SearchResultItem[];
-  setRelatedArticles: React.Dispatch<React.SetStateAction<SearchResultItem[]>>;
   isSearchingMode: boolean;
   clearSearch: () => void;
   removeArticleFromResults: (articleId: string) => void;
@@ -32,24 +26,14 @@ export interface UseSearchAndRelatedReturn {
 }
 
 export function useSearchAndRelated(
-  options: UseSearchAndRelatedOptions,
+  options: UseSearchAndRelatedOptions = {},
 ): UseSearchAndRelatedReturn {
-  const {
-    activeTabUrl,
-    activeTabTitle,
-    savedArticleId,
-    hasLibraryArticles = true,
-    domainFilter,
-    starredOnly,
-  } = options;
+  const { domainFilter, starredOnly } = options;
 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [debouncedQuery, setDebouncedQuery] = useState<string>('');
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
-  const [relatedArticles, setRelatedArticles] = useState<SearchResultItem[]>(
-    [],
-  );
 
   // Debounce search query (250ms)
   useEffect(() => {
@@ -106,56 +90,6 @@ export function useSearchAndRelated(
     };
   }, [debouncedQuery, domainFilter, starredOnly]);
 
-  // Proactive Related Past Reading strip when active tab changes
-  useEffect(() => {
-    let cancelled = false;
-    const isHttp =
-      activeTabUrl.startsWith('http://') || activeTabUrl.startsWith('https://');
-
-    (async () => {
-      await Promise.resolve();
-      if (cancelled) return;
-
-      if (
-        !isHttp ||
-        !activeTabTitle.trim() ||
-        !hasLibraryArticles ||
-        !chrome.runtime?.sendMessage
-      ) {
-        setRelatedArticles([]);
-        return;
-      }
-
-      try {
-        const response = (await chrome.runtime.sendMessage({
-          type: 'FIND_RELATED_ARTICLES',
-          payload: {
-            text: activeTabTitle,
-            excludeArticleId: savedArticleId,
-            topK: 3,
-          },
-        } satisfies ExtensionMessage)) as
-          | { type: 'SEARCH_RESULTS'; payload: { results: SearchResultItem[] } }
-          | undefined;
-
-        if (!cancelled) {
-          const matches = (response?.payload?.results ?? []).filter(
-            r => r.score >= 0.2,
-          );
-          setRelatedArticles(matches.slice(0, 3));
-        }
-      } catch {
-        if (!cancelled) {
-          setRelatedArticles([]);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeTabUrl, activeTabTitle, hasLibraryArticles, savedArticleId]);
-
   const handleSnippetClick = useCallback(
     async (url: string, _snippet?: string): Promise<void> => {
       if (typeof chrome === 'undefined' || !chrome.tabs) {
@@ -207,9 +141,6 @@ export function useSearchAndRelated(
     setSearchResults(prev =>
       prev.filter(item => item.article.id !== articleId),
     );
-    setRelatedArticles(prev =>
-      prev.filter(item => item.article.id !== articleId),
-    );
   }, []);
 
   const updateArticleInResults = useCallback((article: ArticleRecord) => {
@@ -227,8 +158,6 @@ export function useSearchAndRelated(
     isSearching,
     searchResults,
     setSearchResults,
-    relatedArticles,
-    setRelatedArticles,
     isSearchingMode: debouncedQuery.length > 0,
     clearSearch,
     removeArticleFromResults,

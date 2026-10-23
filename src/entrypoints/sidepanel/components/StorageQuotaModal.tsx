@@ -87,14 +87,14 @@ export function StorageQuotaModal({
               value={customCapMB}
               onChange={e => setCustomCapMB(e.target.value)}
               disabled={Boolean(quotaStatus?.isLowPhysicalDisk)}
-              className="w-24 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:border-indigo-500 focus:outline-hidden disabled:opacity-50"
+              className="w-24 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:border-cyan-600 focus:outline-hidden disabled:opacity-50"
             />
             <span className="text-xs text-slate-500">MB</span>
             <button
               type="button"
               onClick={() => void onExpandCap()}
               disabled={Boolean(quotaStatus?.isLowPhysicalDisk)}
-              className="ml-auto rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="ml-auto rounded-md bg-cyan-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-cyan-800 disabled:opacity-50"
             >
               Expand Storage Limit
             </button>
@@ -121,7 +121,7 @@ export function StorageQuotaModal({
             <button
               type="button"
               onClick={onOpenKnowledgeManager}
-              className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+              className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-cyan-700 hover:bg-cyan-50"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               <span>Open Full-Screen Knowledge Manager</span>
@@ -130,7 +130,7 @@ export function StorageQuotaModal({
         </div>
 
         {quotaFeedback && (
-          <p className="mt-2 text-center text-[11px] font-medium text-indigo-700">
+          <p className="mt-2 text-center text-[11px] font-medium text-cyan-800">
             {quotaFeedback}
           </p>
         )}

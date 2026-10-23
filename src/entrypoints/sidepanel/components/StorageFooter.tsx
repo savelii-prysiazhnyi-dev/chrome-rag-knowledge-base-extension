@@ -31,7 +31,7 @@ export function StorageFooter({
     ? 'bg-rose-600'
     : quotaStatus?.isWarning
       ? 'bg-amber-500'
-      : 'bg-indigo-600';
+      : 'bg-cyan-700';
 
   return (
     <footer className="border-t border-slate-200 bg-white px-4 py-3">
@@ -80,7 +80,7 @@ export function StorageFooter({
         <button
           type="button"
           onClick={onOpenKnowledgeManager}
-          className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 hover:text-indigo-700"
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-cyan-700 hover:text-cyan-800"
         >
           <Download className="h-3 w-3" />
           <span>Export Data</span>

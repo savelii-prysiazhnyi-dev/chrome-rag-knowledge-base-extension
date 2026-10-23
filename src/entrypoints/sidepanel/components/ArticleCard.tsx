@@ -87,7 +87,7 @@ export function ArticleCard({
         </div>
       </div>
 
-      <h3 className="mt-1.5 line-clamp-2 text-xs font-semibold text-slate-900 group-hover:text-indigo-600">
+      <h3 className="mt-1.5 line-clamp-2 text-xs font-semibold text-slate-900 group-hover:text-cyan-700">
         {article.title}
       </h3>
 

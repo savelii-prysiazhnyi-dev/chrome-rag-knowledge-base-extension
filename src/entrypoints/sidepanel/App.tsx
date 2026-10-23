@@ -6,7 +6,6 @@ import { useLibraryArticles } from './hooks/useLibraryArticles';
 import { useSearchAndRelated } from './hooks/useSearchAndRelated';
 import { SidePanelHeader } from './components/SidePanelHeader';
 import { ActiveTabBanner } from './components/ActiveTabBanner';
-import { RelatedArticlesStrip } from './components/RelatedArticlesStrip';
 import { SearchBar } from './components/SearchBar';
 import { DomainFilterPills } from './components/DomainFilterPills';
 import { ArticleCard } from './components/ArticleCard';
@@ -71,10 +70,6 @@ export default function App(): React.JSX.Element {
   });
 
   const search = useSearchAndRelated({
-    activeTabUrl: activeTab.activeTabUrl,
-    activeTabTitle: activeTab.activeTabTitle,
-    savedArticleId: activeTab.savedArticle?.id,
-    hasLibraryArticles: library.domainCounts.length > 0,
     domainFilter: library.domainFilter,
     starredOnly: library.starredOnly,
   });
@@ -142,12 +137,6 @@ export default function App(): React.JSX.Element {
           onRemove={() => void handleRemoveActiveTab()}
           onDismissError={() => activeTab.setSaveError(null)}
         />
-        {!search.isSearchingMode && (
-          <RelatedArticlesStrip
-            relatedArticles={search.relatedArticles}
-            onArticleClick={search.handleSnippetClick}
-          />
-        )}
       </header>
 
       <div className="border-b border-slate-200 bg-white px-4 py-2.5">
@@ -167,7 +156,7 @@ export default function App(): React.JSX.Element {
           onToggleStarred={() => library.setStarredOnly(prev => !prev)}
           onSelectDomain={domain =>
             library.setDomainFilter(
-              library.domainFilter === domain ? undefined : domain,
+              !domain || library.domainFilter === domain ? undefined : domain,
             )
           }
         />
@@ -177,7 +166,7 @@ export default function App(): React.JSX.Element {
         {search.isSearchingMode ? (
           search.isSearching ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <RefreshCw className="h-5 w-5 animate-spin text-indigo-600" />
+              <RefreshCw className="h-5 w-5 animate-spin text-cyan-700" />
               <p className="mt-2 text-xs text-slate-500">
                 Running hybrid semantic + lexical search…
               </p>
@@ -199,10 +188,7 @@ export default function App(): React.JSX.Element {
                   key={result.article.id}
                   result={result}
                   onClick={() =>
-                    void search.handleSnippetClick(
-                      result.article.url,
-                      result.bestSnippet,
-                    )
+                    void search.handleSnippetClick(result.article.url)
                   }
                 />
               ))}
@@ -225,9 +211,7 @@ export default function App(): React.JSX.Element {
                 <>
                   Navigate to an interesting article, documentation, or
                   discussion, and click{' '}
-                  <span className="font-semibold text-indigo-600">
-                    Remember
-                  </span>{' '}
+                  <span className="font-semibold text-cyan-700">Remember</span>{' '}
                   or press{' '}
                   <kbd className="rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] font-medium text-slate-700">
                     Alt+S

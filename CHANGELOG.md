@@ -48,7 +48,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Side Panel UI/UX Modernization & Simplification:**
+  - **Header:** Removed the purple brain icon square, simplified subtitle from "Local RAG Assistant" to "Semantic knowledge base in your browser", and renamed "Manager" to "Full Library" with an `ExternalLink` icon.
+  - **Active Tab Link & 1-Click Copy:** Added a thin rounded component under the header displaying the active tab URL with a `Link2` icon, monospace text, and a 2-second "Copied!" feedback pill upon clicking.
+  - **De-unified Saved Status & Action Controls:** Eliminated the outer background card container (`border border-slate-200 bg-slate-50 p-2.5 rounded-lg`), separating saved/not-saved status indicators (emerald/amber dots + reading time + indexing status) from text-only cyan action buttons (`Remember`, `Update`, `Delete`) without icon noise.
+  - **Single Domain Dropdown Filter:** Replaced multi-domain button lists with `All`, `Starred`, and a single `Domain` button expanding a dropdown of available domains `{siteName} ({count})` with active cyan pill styling and 1-click clearing.
+  - **Search Result Cards:** Aligned search cards with library feed styling (site favicons with `Globe` fallback, article excerpts under the title instead of raw snippet blocks, and text-only cyan `{match}% match` labels without pill backgrounds).
+  - **Theme Accent:** Shifted the primary Side Panel accent palette from purple/indigo to **cyan** (`cyan-700`, `cyan-800`, `cyan-600`, `cyan-50`).
+
 - Renamed side-panel intent `INDEX_CURRENT_TAB` to `SAVE_ACTIVE_TAB`; removed it from the content script. `GENERATE_EMBEDDINGS_JOB` and `SEARCH_QUERY` now carry `target: 'offscreen'` so only the offscreen document handles them.
+
+### Removed
+
+- **Proactive Related Past Reading:** Removed `RelatedArticlesStrip.tsx` and stripped proactive `FIND_RELATED_ARTICLES` background queries and state from `useSearchAndRelated.ts`.
 
 - **Phase 3: Content Script, Readability Distillation & Guardrails:**
   - Added dependencies `@mozilla/readability`, `dompurify`, `turndown`; dev dependencies `@types/turndown`, `jsdom`.
