@@ -6,6 +6,7 @@ A privacy-first, local-first semantic retrieval extension that turns Google Chro
 
 Zero cloud servers. Zero telemetry. Zero API keys. Everything stays inside your browser profile.
 
+<video src="https://github.com/user-attachments/assets/8d305a80-ce10-4f2f-a28e-4bc22b569ffb" controls autoplay loop muted width="100%"></video>
 ---
 
 ## Table of Contents
