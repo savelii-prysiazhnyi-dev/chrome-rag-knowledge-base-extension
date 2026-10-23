@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Refined Header Separator Placement, Copied Badge & Selection Highlights:**
+  - Repositioned dull grey middle separator (`<div className="mx-auto my-2.5 h-px w-3/5 bg-slate-200" />`) in `src/entrypoints/sidepanel/App.tsx` between `SidePanelHeader` and `ActiveTabBanner`, framing the header block cleanly with `border-b border-slate-200/80 bg-white px-4 pt-3 pb-3`.
+  - Softened active tab copied URL badge styling in `src/entrypoints/sidepanel/components/ActiveTabBanner.tsx` from vivid cyan to conservative slate (`bg-slate-200/80 text-slate-700 font-medium`).
+  - Updated global text selection highlight styling across both side panel (`sidepanel/index.html`) and Knowledge Manager options page (`options/index.html`) from cyan/indigo to conservative slate tone (`selection:bg-slate-200 selection:text-slate-900`).
+
 - **Side Panel Layout, Active Tab States & Conservative Hover Styles:**
   - Added centered dull grey middle separator (`<div className="mx-auto my-3 h-px w-3/5 bg-slate-200" />`) under the header in `src/entrypoints/sidepanel/App.tsx`, replacing the harsh start-to-end border and introducing balanced vertical breathing room between the active tab header block and search bar.
   - Redesigned `ActiveTabBanner.tsx` with distinct active states:

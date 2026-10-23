@@ -92,6 +92,9 @@ describe('Side Panel Modernized Components', () => {
         'https://example.com/article-1',
       );
       expect(container.textContent).toContain('Copied!');
+      const badge = container.querySelector('span.shrink-0');
+      expect(badge?.className).toContain('bg-slate-200/80');
+      expect(badge?.className).toContain('text-slate-700');
     });
 
     it('renders saved state with reading time and indexing indicator, and equal-width buttons', () => {

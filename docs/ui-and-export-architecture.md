@@ -52,14 +52,14 @@ The Side Panel acts as an always-available reading companion synchronized with t
 ### Modular Presentation Components (`src/entrypoints/sidepanel/components/`)
 
 - `SidePanelHeader.tsx`: Brand "Second Brain", descriptive subtitle "Semantic knowledge base in your browser", and "Full Library" launcher button without extra icons.
-- `ActiveTabBanner.tsx`: Thin rounded URL copy pill with subtle hover state and 2-second "Copied!" feedback, full-width "Remember this page" primary button for unsaved tabs, "This page is saved" check indicator with reading time/indexing state, balanced equal-width "Update" (cyan) and "Delete" (conservative border) action buttons, and dismissible error banner.
+- `ActiveTabBanner.tsx`: Thin rounded URL copy pill with subtle hover state and conservative 2-second "Copied!" feedback badge (`bg-slate-200/80 text-slate-700`), full-width "Remember this page" primary button for unsaved tabs, "This page is saved" check indicator with reading time/indexing state, balanced equal-width "Update" (cyan) and "Delete" (conservative border) action buttons, and dismissible error banner.
 - `SearchBar.tsx`: Input with search icon, clear button, and conservative slate focus ring (`focus:border-slate-400 focus:ring-slate-300/60`).
 - `DomainFilterPills.tsx`: Streamlined `All`, `Starred`, and single `Domain` dropdown selector displaying `{siteName} ({count})` with conservative slate hover/selected states and active cyan pill styling.
 - `ArticleCard.tsx`: Individual card in library feed (favicon, title, siteName, relative date, excerpt, reading time, star toggle, delete, subtle hover border/background, and understated title hover).
 - `SearchResultCard.tsx`: Scored result card styled identically to library feed cards (favicon, title, siteName, date, article excerpt, text-only cyan `% match` indicator, subtle hover border/background, and understated title hover).
 - `StorageFooter.tsx`: Quota progress bar, usage text, cyan "Export Data" button.
 - `StorageQuotaModal.tsx`: Quota warning/exceeded modal (allocate custom MB vs clean up space).
-- `App.tsx`: Concise, declarative orchestrator composing the hooks and components with centered dull grey middle separator (~230 lines).
+- `App.tsx`: Concise, declarative orchestrator composing the hooks and components with centered dull grey middle separator positioned between header and active tab banner (~230 lines).
 
 ---
 

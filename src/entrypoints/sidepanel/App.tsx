@@ -126,8 +126,9 @@ export default function App(): React.JSX.Element {
 
   return (
     <div className="flex h-screen w-full flex-col bg-slate-50 text-slate-800">
-      <header className="bg-white px-4 pt-3 pb-1">
+      <header className="border-b border-slate-200/80 bg-white px-4 pt-3 pb-3">
         <SidePanelHeader onOpenKnowledgeManager={handleOpenKnowledgeManager} />
+        <div className="mx-auto my-2.5 h-px w-3/5 bg-slate-200" />
         <ActiveTabBanner
           savedArticle={activeTab.savedArticle}
           activeTabUrl={activeTab.activeTabUrl}
@@ -137,7 +138,6 @@ export default function App(): React.JSX.Element {
           onRemove={() => void handleRemoveActiveTab()}
           onDismissError={() => activeTab.setSaveError(null)}
         />
-        <div className="mx-auto my-3 h-px w-3/5 bg-slate-200" />
       </header>
 
       <div className="border-b border-slate-200 bg-white px-4 pt-0.5 pb-3">

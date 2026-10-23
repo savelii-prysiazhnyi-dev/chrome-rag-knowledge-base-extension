@@ -53,7 +53,7 @@ export function ActiveTabBanner({
           </span>
         </div>
         {copied && (
-          <span className="shrink-0 rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-semibold text-cyan-800">
+          <span className="shrink-0 rounded-full bg-slate-200/80 px-2 py-0.5 text-[10px] font-medium text-slate-700">
             Copied!
           </span>
         )}
