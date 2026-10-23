@@ -71,7 +71,7 @@ describe('syncTabBadge and dynamic icon switching', () => {
     expect(db.getArticleByUrl).not.toHaveBeenCalled();
   });
 
-  it('sets active cyan icon, green background, and checkmark badge when article is indexed', async () => {
+  it('sets active cyan icon with no badge when article is indexed', async () => {
     vi.mocked(db.getArticleByUrl).mockResolvedValueOnce({
       id: 'art-123',
       url: 'https://example.com/article',
@@ -94,14 +94,12 @@ describe('syncTabBadge and dynamic icon switching', () => {
       tabId: 3,
       path: ICONS_ACTIVE,
     });
-    expect(mockSetBadgeBackgroundColor).toHaveBeenCalledWith({
-      tabId: 3,
-      color: '#10b981',
-    });
-    expect(mockSetBadgeText).toHaveBeenCalledWith({
+    expect(mockSetBadgeBackgroundColor).not.toHaveBeenCalled();
+    expect(mockSetBadgeText).not.toHaveBeenCalledWith({
       tabId: 3,
       text: '✓',
     });
+    expect(mockSetBadgeText).toHaveBeenCalledWith({ tabId: 3, text: '' });
   });
 
   it('sets inactive icon and clears badge when article is not found in database', async () => {
@@ -206,10 +204,11 @@ describe('syncTabBadge and dynamic icon switching', () => {
       tabId: 101,
       path: ICONS_ACTIVE,
     });
-    expect(mockSetBadgeText).toHaveBeenCalledWith({
+    expect(mockSetBadgeText).not.toHaveBeenCalledWith({
       tabId: 101,
       text: '✓',
     });
+    expect(mockSetBadgeBackgroundColor).not.toHaveBeenCalled();
     expect(mockSetIcon).toHaveBeenCalledWith({
       tabId: 102,
       path: ICONS_INACTIVE,

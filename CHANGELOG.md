@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Knowledge Graph Extension Icons & Dynamic Active/Inactive Toolbar Switching:**
   - Designed and generated the 4-node connected Knowledge Graph icon assets in SVG and high-DPI rasterized PNG formats (16x16, 32x32, 48x48, 128x128) under `public/icons/`.
-  - Configured active (`#13DFD6` luminous cyan nodes and edges with `#164E63` squircle border on `#151923` dark navy) and inactive (`#94A3B8` slate-400 silver/grey nodes and `#64748B` slate-500 edges with `#2D3748` squircle border on `#151923` dark navy) visual states.
+  - Configured active (`#13DFD6` luminous cyan) and inactive (`#94A3B8` mid-grey) visual states with transparent backgrounds.
   - Updated `wxt.config.ts` manifest with standard extension `icons` and default inactive `action` toolbar icons.
   - Implemented dynamic per-tab action icon switching in `src/entrypoints/background/index.ts` (`syncTabBadge` and `syncAllTabBadges`) via `chrome.action.setIcon` and `chrome.action.setBadgeText`:
     - Displays active cyan Knowledge Graph icon + `#10b981` green checkmark badge (`✓`) when the active tab is indexed.

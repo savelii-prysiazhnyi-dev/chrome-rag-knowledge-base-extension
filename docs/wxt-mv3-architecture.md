@@ -36,7 +36,7 @@ Building a privacy-first, local-first semantic retrieval system within these con
 │  ┌──────────────────────────────────────────────────────────────────────────────────┐  │
 │  │                   Background Service Worker Process (Coordinator)                │  │
 │  │  - Event-driven lifecycle (terminates after ~30s idle)                           │  │
-│  │  - Tab state tracking & dynamic toolbar badge (✓)                                │  │
+│  │  - Tab state tracking & dynamic toolbar icon                                │  │
 │  │  - Storage Quota Gatekeeper (navigator.storage.estimate vs maxStorageBytes)       │  │
 │  │  - Keyboard shortcuts ('Alt+S' / remember-page command listener)                 │  │
 │  └──────────────────────────────────────┬───────────────────────────────────────────┘  │
@@ -75,7 +75,7 @@ Building a privacy-first, local-first semantic retrieval system within these con
   1. **Panel Behavior Configuration:** Enables `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` so clicking the extension action icon instantly toggles the Side Panel.
   2. **Shortcut Dispatcher:** Catches `Alt+S` (`remember-page`) and invokes the shared `saveTab(tabId)` coordinator (same code path as the side panel's `SAVE_ACTIVE_TAB`), which sends `EXTRACT_PAGE` to the content script. A per-tab in-memory lock (`activeIngestions`) rejects duplicates; it is intentionally not persisted, so a service-worker restart simply clears it (re-saves are idempotent).
   3. **Storage Quota Gatekeeper:** Before ingestion, queries `navigator.storage.estimate()` and validates available quota against `StorageSettings.maxStorageBytes` (default `50 MB`).
-  4. **Toolbar Icon & Badge Synchronization:** Dynamically switches the extension toolbar icon and badge based on the active tab's indexing status: displays the luminous cyan Knowledge Graph icon (`ICONS_ACTIVE`) with a green checkmark badge (`✓`) when the page is saved and indexed, and switches to the silver/grey Knowledge Graph icon (`ICONS_INACTIVE`) with cleared badge (`''`) when the tab is unindexed, navigated away, deleted, or on restricted schemes.
+  4. **Toolbar Icon Synchronization:** Dynamically switches the extension toolbar icon based on the active tab's indexing status: displays the luminous cyan Knowledge Graph icon (`ICONS_ACTIVE`) (transparent background, no badge) when the page is saved and indexed, and switches to the silver/grey Knowledge Graph icon (`ICONS_INACTIVE`) when the tab is unindexed, navigated away, deleted, or on restricted schemes.
 
 ### 3.2 Content Script (`src/entrypoints/content/index.ts`)
 
@@ -158,20 +158,20 @@ chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 2. No intermediary popup window is instantiated, reducing memory consumption.
 3. If the user clicks `Alt+S`, the background listener captures the command and triggers ingestion without disrupting side panel state.
 
-### 5.1 Dynamic Toolbar Icon & Badge Lifecycle
+### 5.1 Dynamic Toolbar Icon Lifecycle
 
-The extension action utilizes dynamic per-tab toolbar icons (`chrome.action.setIcon({ tabId, path })`) and badges (`chrome.action.setBadgeText({ tabId, text })`) to provide immediate ambient awareness of whether the currently visited web page exists in the local knowledge base:
+The extension action utilizes dynamic per-tab toolbar icons (`chrome.action.setIcon({ tabId, path })`) to provide immediate ambient awareness of whether the currently visited web page exists in the local knowledge base. No badge is ever shown (badge text is always kept `''`), and the icons have a transparent background (no squircle) so they blend with light and dark Chrome toolbars:
 
-| State                              | Visual Representation      | Squircle & Stroke                            | Graph Nodes & Edges                                  | Badge Indicator                  | Trigger Conditions                                                                  |
-| :--------------------------------- | :------------------------- | :------------------------------------------- | :--------------------------------------------------- | :------------------------------- | :---------------------------------------------------------------------------------- |
-| **Active** (Saved / Indexed)       | Luminous Cyan 4-Node Graph | Background `#151923`, Border `#164E63` (3px) | `#13DFD6` cyan nodes & connected edges               | Background `#10b981`, Text `'✓'` | Page canonical URL resolved in IndexedDB with status `indexed`                      |
-| **Inactive** (Unindexed / Neutral) | Silver/Slate 4-Node Graph  | Background `#151923`, Border `#2D3748` (3px) | Slate-400 `#94A3B8` nodes, slate-500 `#64748B` edges | Empty badge text `''`            | New tab, unsaved page, deleted article, or non-HTTP scheme (`chrome://`, `edge://`) |
+| State                              | Visual Representation      | Graph Nodes & Edges     | Trigger Conditions                                                                  |
+| :--------------------------------- | :------------------------- | :---------------------- | :---------------------------------------------------------------------------------- |
+| **Active** (Saved / Indexed)       | Luminous Cyan 4-Node Graph | `#13DFD6` nodes & edges | Page canonical URL resolved in IndexedDB with status `indexed`                      |
+| **Inactive** (Unindexed / Neutral) | Mid-grey 4-Node Graph      | `#94A3B8` nodes & edges | New tab, unsaved page, deleted article, or non-HTTP scheme (`chrome://`, `edge://`) |
 
 #### Synchronization Hooks:
 
 - **Tab Switching & Navigation:** Monitored via `chrome.tabs.onActivated` and `chrome.tabs.onUpdated` (`changeInfo.status === 'complete'` or `changeInfo.url`).
 - **Real-Time Article Ingestion:** Broadcasts `ARTICLE_INDEXED` and `DATABASE_UPDATED` (reasons: `article_saved`, `article_deleted`, `bulk_cleanup`) triggering `syncAllTabBadges()`.
-- **Side Panel In-Place Removal:** `useActiveTab.removeTab` and `App.tsx`'s `onArticleDeleted` immediately revert the active tab's action icon to `ICONS_INACTIVE` and clear the badge text before cross-tab broadcast finishes.
+- **Side Panel In-Place Removal:** `useActiveTab.removeTab` and `App.tsx`'s `onArticleDeleted` immediately revert the active tab's action icon to `ICONS_INACTIVE` (badge text stays cleared) before cross-tab broadcast finishes.
 
 ---
 

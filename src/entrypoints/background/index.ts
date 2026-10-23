@@ -74,13 +74,8 @@ export async function syncTabBadge(tabId: number, url?: string): Promise<void> {
           .setIcon({ tabId, path: ICONS_ACTIVE })
           .catch(() => {});
       }
-      if (chrome.action.setBadgeBackgroundColor) {
-        await chrome.action
-          .setBadgeBackgroundColor({ tabId, color: '#10b981' })
-          .catch(() => {});
-      }
       if (chrome.action.setBadgeText) {
-        await chrome.action.setBadgeText({ tabId, text: '✓' }).catch(() => {});
+        await chrome.action.setBadgeText({ tabId, text: '' }).catch(() => {});
       }
     } else {
       if (chrome.action.setIcon) {
@@ -184,7 +179,7 @@ export default defineBackground(() => {
     }
   });
 
-  // Tab lifecycle listeners for live ✓ badge synchronization
+  // Tab lifecycle listeners for live icon synchronization
   if (chrome.tabs?.onActivated) {
     chrome.tabs.onActivated.addListener(({ tabId }) => {
       chrome.tabs
