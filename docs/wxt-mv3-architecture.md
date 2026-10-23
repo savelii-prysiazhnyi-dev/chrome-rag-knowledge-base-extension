@@ -73,7 +73,7 @@ Building a privacy-first, local-first semantic retrieval system within these con
 - **Lifecycle:** **Ephemeral & Event-Driven**. Chrome spins up the service worker when an event fires (e.g., `chrome.commands.onCommand`, `chrome.tabs.onActivated`, `chrome.runtime.onMessage`) and terminates it after ~30 seconds of inactivity to save memory.
 - **Key Responsibilities:**
   1. **Panel Behavior Configuration:** Enables `chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })` so clicking the extension action icon instantly toggles the Side Panel.
-  2. **Shortcut Dispatcher:** Catches `Alt+S` (`remember-page`) and invokes the shared `saveTab(tabId)` coordinator (same code path as the side panel's `SAVE_ACTIVE_TAB`), which sends `EXTRACT_PAGE` to the content script. A per-tab in-memory lock (`activeIngestions`) rejects duplicates; it is intentionally not persisted, so a service-worker restart simply clears it (re-saves are idempotent).
+  2. **Shortcut & Ingestion Dispatcher:** Catches `Alt+S` (`remember-page`) and handles `SAVE_ACTIVE_TAB` from the side panel. It orchestrates `saveTab(tabId)`, sending `EXTRACT_PAGE` to the content script. If the target tab was opened prior to extension reload/installation, it automatically falls back to dynamic content script injection via `chrome.scripting.executeScript`.
   3. **Storage Quota Gatekeeper:** Before ingestion, queries `navigator.storage.estimate()` and validates available quota against `StorageSettings.maxStorageBytes` (default `50 MB`).
   4. **Toolbar Icon Synchronization:** Dynamically switches the extension toolbar icon based on the active tab's indexing status: displays the luminous cyan Knowledge Graph icon (`ICONS_ACTIVE`) (transparent background, no badge) when the page is saved and indexed, and switches to the silver/grey Knowledge Graph icon (`ICONS_INACTIVE`) when the tab is unindexed, navigated away, deleted, or on restricted schemes.
 
@@ -172,6 +172,35 @@ The extension action utilizes dynamic per-tab toolbar icons (`chrome.action.setI
 - **Tab Switching & Navigation:** Monitored via `chrome.tabs.onActivated` and `chrome.tabs.onUpdated` (`changeInfo.status === 'complete'` or `changeInfo.url`).
 - **Real-Time Article Ingestion:** Broadcasts `ARTICLE_INDEXED` and `DATABASE_UPDATED` (reasons: `article_saved`, `article_deleted`, `bulk_cleanup`) triggering `syncAllTabBadges()`.
 - **Side Panel In-Place Removal:** `useActiveTab.removeTab` and `App.tsx`'s `onArticleDeleted` immediately revert the active tab's action icon to `ICONS_INACTIVE` (badge text stays cleared) before cross-tab broadcast finishes.
+
+### 5.2 Host Permissions & Dynamic Content Script Injection
+
+In Manifest V3, content scripts are injected declaratively on matching URLs (`http://*/*` and `https://*/*`) for tabs loaded after extension startup. However, when a user attempts to save a page from a tab that was already open prior to extension installation or reload, or when the content script context was invalidated, direct `chrome.tabs.sendMessage(tabId, { type: 'EXTRACT_PAGE' })` fails.
+
+The background coordinator handles this gracefully by catching the message failure and dynamically injecting the content script via `chrome.scripting.executeScript`:
+
+```typescript
+try {
+  return (await chrome.tabs.sendMessage(tabId, msg)) as ExtractPageResponse;
+} catch {
+  // Tab was open before extension install/reload; dynamically inject script
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ['content-scripts/content.js'],
+  });
+  return (await chrome.tabs.sendMessage(tabId, msg)) as ExtractPageResponse;
+}
+```
+
+#### Why `host_permissions: ['http://*/*', 'https://*/*']` is Required:
+
+- Under MV3 security policies, the `activeTab` permission is strictly scoped to direct user gestures on the extension's action icon in the browser toolbar or context menus.
+- **Side Panel Gesture Isolation:** Clicks inside the Side Panel (an extension document iframe) do **not** transmit an `activeTab` user gesture to the active web page tab.
+- Without explicit `host_permissions: ['http://*/*', 'https://*/*']` in `manifest`, Chrome rejects `chrome.scripting.executeScript` calls with:
+  ```
+  Cannot access contents of url "<url>". Extension manifest must request permission to access this host.
+  ```
+- Declaring `host_permissions` guarantees seamless dynamic script injection and extraction regardless of whether the user triggers ingestion via `Alt+S` or via the Side Panel's "Remember" button.
 
 ---
 

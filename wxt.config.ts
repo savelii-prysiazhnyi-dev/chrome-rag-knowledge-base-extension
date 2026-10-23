@@ -64,6 +64,7 @@ export default defineConfig({
       'tabs',
       'scripting',
     ],
+    host_permissions: ['http://*/*', 'https://*/*'],
     optional_permissions: ['unlimitedStorage' as never],
     content_security_policy: {
       extension_pages:

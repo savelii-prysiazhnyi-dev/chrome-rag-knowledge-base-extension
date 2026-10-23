@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Side Panel Content Extraction Host Permissions:**
+  - Added `host_permissions: ['http://*/*', 'https://*/*']` to `manifest` in `wxt.config.ts`.
+  - In Manifest V3, clicks inside the Side Panel (an extension document iframe) do not grant an active user gesture (`activeTab`) to the host webpage. When saving a page from a tab opened before extension installation/reload (or after context invalidation), the background coordinator's dynamic script injection fallback (`chrome.scripting.executeScript`) previously failed with `Cannot access contents of url "...". Extension manifest must request permission to access this host.`
+  - Documented Manifest V3 host permission and Side Panel gesture isolation behavior in `docs/wxt-mv3-architecture.md` and `README.md`.
+
 ### Removed
 
 - **Experimental Offscreen Web Worker:**

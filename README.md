@@ -390,3 +390,6 @@ All quality checks and builds are managed via `pnpm` scripts:
    - Employs a conservative default storage cap of `50 MB`.
    - Never requests elevated disk access or consumes system storage without displaying a user confirmation modal.
    - Physical disk space guardrail automatically halts saves if host machine free disk drops below `500 MB`.
+5. **Host Permissions & Side Panel Gesture Isolation:**
+   - Manifest V3 restricts `activeTab` to direct gestures on the extension toolbar action icon or context menu. Because the Side Panel is an extension document, user clicks inside the Side Panel do not grant an `activeTab` gesture to the host webpage.
+   - Declarative and dynamic script injection (`chrome.scripting.executeScript` fallback for tabs opened before extension reload/installation) uses `host_permissions: ['http://*/*', 'https://*/*']` to guarantee reliable content extraction across all standard web pages without requiring manual page reloads.
