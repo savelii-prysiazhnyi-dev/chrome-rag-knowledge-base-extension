@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { deleteArticles } from '../../../db';
+import { ICONS_INACTIVE } from '../../../constants/icons';
 import type { SaveTabResult } from '../../background/coordinator';
 import type {
   ArticleRecord,
@@ -164,10 +165,17 @@ export function useActiveTab(
     if (!savedArticle) return;
     try {
       await deleteArticles([savedArticle.id]);
-      if (activeTabId !== undefined && chrome.action?.setBadgeText) {
-        await chrome.action
-          .setBadgeText({ tabId: activeTabId, text: '' })
-          .catch(() => {});
+      if (activeTabId !== undefined) {
+        if (chrome.action?.setIcon) {
+          await chrome.action
+            .setIcon({ tabId: activeTabId, path: ICONS_INACTIVE })
+            .catch(() => {});
+        }
+        if (chrome.action?.setBadgeText) {
+          await chrome.action
+            .setBadgeText({ tabId: activeTabId, text: '' })
+            .catch(() => {});
+        }
       }
       if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
         chrome.runtime

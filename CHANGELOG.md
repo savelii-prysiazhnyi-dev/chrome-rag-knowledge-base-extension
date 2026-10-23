@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Knowledge Graph Extension Icons & Dynamic Active/Inactive Toolbar Switching:**
+  - Designed and generated the 4-node connected Knowledge Graph icon assets in SVG and high-DPI rasterized PNG formats (16x16, 32x32, 48x48, 128x128) under `public/icons/`.
+  - Configured active (`#13DFD6` luminous cyan nodes and edges with `#164E63` squircle border on `#151923` dark navy) and inactive (`#94A3B8` slate-400 silver/grey nodes and `#64748B` slate-500 edges with `#2D3748` squircle border on `#151923` dark navy) visual states.
+  - Updated `wxt.config.ts` manifest with standard extension `icons` and default inactive `action` toolbar icons.
+  - Implemented dynamic per-tab action icon switching in `src/entrypoints/background/index.ts` (`syncTabBadge` and `syncAllTabBadges`) via `chrome.action.setIcon` and `chrome.action.setBadgeText`:
+    - Displays active cyan Knowledge Graph icon + `#10b981` green checkmark badge (`✓`) when the active tab is indexed.
+    - Displays inactive silver/grey Knowledge Graph icon + cleared badge (`''`) when unindexed, navigating, deleted, or on non-HTTP schemes.
+  - Updated `useActiveTab.ts` (`removeTab`) and `App.tsx` (`onArticleDeleted`) in the Side Panel to immediately revert the active tab's toolbar icon to inactive upon article deletion.
+  - Added unit test suite in `src/entrypoints/background/__tests__/syncTabBadge.test.ts` and updated `crossWindowSync.test.ts` to assert dynamic `setIcon` and `setBadgeText` transitions.
+  - Updated architectural documentation in `docs/wxt-mv3-architecture.md` with Section 5.1 detailing the dynamic toolbar icon lifecycle.
+
 - **Logical Storage Footprint Tracking (`getLogicalStorageUsage`):**
   - Added optional `bytes?: number` field to `ArticleRecord` representing the total serialized payload footprint in bytes (metadata, partitioned content, passage chunks, and 1,536-byte `Float32Array` embeddings).
   - Implemented `getLogicalStorageUsage()` in `src/db/repository.ts` and exported it from `src/db/index.ts`. Returns a deterministic `0` when no articles exist, sums cached `article.bytes` across records, and dynamically computes and backfills legacy records missing `bytes`.

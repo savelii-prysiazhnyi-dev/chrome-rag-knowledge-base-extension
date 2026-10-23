@@ -6,6 +6,7 @@ import { useStorageQuota } from '../useStorageQuota';
 import { useLibraryArticles } from '../../entrypoints/sidepanel/hooks/useLibraryArticles';
 import { useActiveTab } from '../../entrypoints/sidepanel/hooks/useActiveTab';
 import { useKnowledgeManager } from '../../entrypoints/options/hooks/useKnowledgeManager';
+import { ICONS_INACTIVE } from '../../constants/icons';
 import * as db from '../../db';
 
 // Enable React act environment for clean test output
@@ -152,6 +153,8 @@ describe('Cross-Window Real-Time Synchronization', () => {
       },
       action: {
         setBadgeText: vi.fn(async () => {}),
+        setIcon: vi.fn(async () => {}),
+        setBadgeBackgroundColor: vi.fn(async () => {}),
       },
       permissions: {
         request: vi.fn(async () => true),
@@ -396,6 +399,14 @@ describe('Cross-Window Real-Time Synchronization', () => {
       });
 
       expect(db.deleteArticles).toHaveBeenCalledWith(['art-1']);
+      expect(chrome.action.setIcon).toHaveBeenCalledWith({
+        tabId: 10,
+        path: ICONS_INACTIVE,
+      });
+      expect(chrome.action.setBadgeText).toHaveBeenCalledWith({
+        tabId: 10,
+        text: '',
+      });
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
         type: 'DATABASE_UPDATED',
         payload: { reason: 'article_deleted', articleId: 'art-1' },

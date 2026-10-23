@@ -13,7 +13,8 @@ import {
 } from '../../db';
 import { canonicalizeUrl, hashUrl } from '../../lib/content';
 import { createCoordinator } from './coordinator';
-
+import { ICONS_ACTIVE, ICONS_INACTIVE } from '../../constants/icons';
+export { ICONS_ACTIVE, ICONS_INACTIVE };
 const OFFSCREEN_PATH = 'offscreen.html';
 
 let offscreenCreating: Promise<void> | null = null;
@@ -45,13 +46,20 @@ async function ensureOffscreenDocument(): Promise<void> {
 }
 
 /**
- * Synchronizes the toolbar action badge ('✓' when indexed, '' otherwise) for a given tab.
+ * Synchronizes the toolbar action badge ('✓' when indexed, '' otherwise) and icon for a given tab.
  */
-async function syncTabBadge(tabId: number, url?: string): Promise<void> {
-  if (!chrome.action?.setBadgeText) return;
+export async function syncTabBadge(tabId: number, url?: string): Promise<void> {
+  if (typeof chrome === 'undefined' || !chrome.action) return;
 
   if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
-    await chrome.action.setBadgeText({ tabId, text: '' }).catch(() => {});
+    if (chrome.action.setIcon) {
+      await chrome.action
+        .setIcon({ tabId, path: ICONS_INACTIVE })
+        .catch(() => {});
+    }
+    if (chrome.action.setBadgeText) {
+      await chrome.action.setBadgeText({ tabId, text: '' }).catch(() => {});
+    }
     return;
   }
 
@@ -59,23 +67,47 @@ async function syncTabBadge(tabId: number, url?: string): Promise<void> {
     const canonical = canonicalizeUrl(url);
     const article = await getArticleByUrl(canonical);
     const isIndexed = article?.status === 'indexed';
-    if (isIndexed && chrome.action.setBadgeBackgroundColor) {
+
+    if (isIndexed) {
+      if (chrome.action.setIcon) {
+        await chrome.action
+          .setIcon({ tabId, path: ICONS_ACTIVE })
+          .catch(() => {});
+      }
+      if (chrome.action.setBadgeBackgroundColor) {
+        await chrome.action
+          .setBadgeBackgroundColor({ tabId, color: '#10b981' })
+          .catch(() => {});
+      }
+      if (chrome.action.setBadgeText) {
+        await chrome.action.setBadgeText({ tabId, text: '✓' }).catch(() => {});
+      }
+    } else {
+      if (chrome.action.setIcon) {
+        await chrome.action
+          .setIcon({ tabId, path: ICONS_INACTIVE })
+          .catch(() => {});
+      }
+      if (chrome.action.setBadgeText) {
+        await chrome.action.setBadgeText({ tabId, text: '' }).catch(() => {});
+      }
+    }
+  } catch {
+    if (chrome.action.setIcon) {
       await chrome.action
-        .setBadgeBackgroundColor({ tabId, color: '#10b981' })
+        .setIcon({ tabId, path: ICONS_INACTIVE })
         .catch(() => {});
     }
-    await chrome.action
-      .setBadgeText({ tabId, text: isIndexed ? '✓' : '' })
-      .catch(() => {});
-  } catch {
-    await chrome.action.setBadgeText({ tabId, text: '' }).catch(() => {});
+    if (chrome.action.setBadgeText) {
+      await chrome.action.setBadgeText({ tabId, text: '' }).catch(() => {});
+    }
   }
 }
 
 /**
  * Refreshes toolbar badges across all open browser tabs.
  */
-async function syncAllTabBadges(): Promise<void> {
+export async function syncAllTabBadges(): Promise<void> {
   if (!chrome.tabs?.query) return;
   try {
     const tabs = await chrome.tabs.query({});

@@ -12,6 +12,7 @@ import { ArticleCard } from './components/ArticleCard';
 import { SearchResultCard } from './components/SearchResultCard';
 import { StorageFooter } from './components/StorageFooter';
 import { StorageQuotaModal } from './components/StorageQuotaModal';
+import { ICONS_INACTIVE } from '../../constants/icons';
 import type { ArticleRecord } from '../../types/messages';
 
 export default function App(): React.JSX.Element {
@@ -53,13 +54,17 @@ export default function App(): React.JSX.Element {
     onArticleDeleted: (articleId: string) => {
       if (activeTab.savedArticle?.id === articleId) {
         activeTab.setSavedArticle(undefined);
-        if (
-          activeTab.activeTabId !== undefined &&
-          chrome.action?.setBadgeText
-        ) {
-          void chrome.action
-            .setBadgeText({ tabId: activeTab.activeTabId, text: '' })
-            .catch(() => {});
+        if (activeTab.activeTabId !== undefined) {
+          if (chrome.action?.setIcon) {
+            void chrome.action
+              .setIcon({ tabId: activeTab.activeTabId, path: ICONS_INACTIVE })
+              .catch(() => {});
+          }
+          if (chrome.action?.setBadgeText) {
+            void chrome.action
+              .setBadgeText({ tabId: activeTab.activeTabId, text: '' })
+              .catch(() => {});
+          }
         }
       }
       search.removeArticleFromResults(articleId);

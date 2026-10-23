@@ -46,8 +46,20 @@ export default defineConfig({
       extension_pages:
         "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
     },
+    icons: {
+      16: 'icons/icon-16.png',
+      32: 'icons/icon-32.png',
+      48: 'icons/icon-48.png',
+      128: 'icons/icon-128.png',
+    },
     action: {
-      default_title: 'Open Second Brain Side Panel',
+      default_title: 'Second Brain — Local RAG Knowledge Assistant',
+      default_icon: {
+        16: 'icons/icon-16-inactive.png',
+        32: 'icons/icon-32-inactive.png',
+        48: 'icons/icon-48-inactive.png',
+        128: 'icons/icon-128-inactive.png',
+      },
     },
     commands: {
       'remember-page': {
