@@ -78,7 +78,13 @@ export function createCoordinator(deps: CoordinatorDeps) {
 
     const id = await deps.hashUrl(extracted.canonicalUrl);
     const now = Date.now();
-    const article: Omit<ArticleRecord, 'status'> = {
+    const content: Omit<ArticleContentRecord, 'articleId'> = {
+      contentText: extracted.textContent,
+      contentMarkdown: extracted.markdown,
+    };
+    const textChunks = extracted.chunks.map(c => c.text);
+
+    const articleDraft: Omit<ArticleRecord, 'status'> = {
       id,
       url: extracted.canonicalUrl,
       title: extracted.title,
@@ -91,13 +97,15 @@ export function createCoordinator(deps: CoordinatorDeps) {
       readingTimeMinutes: extracted.readingTimeMinutes,
       isStarred: false,
     };
-    const content: Omit<ArticleContentRecord, 'articleId'> = {
-      contentText: extracted.textContent,
-      contentMarkdown: extracted.markdown,
+    const required = deps.estimatePayloadBytes(
+      articleDraft,
+      content,
+      textChunks,
+    );
+    const article: Omit<ArticleRecord, 'status'> = {
+      ...articleDraft,
+      bytes: required,
     };
-    const textChunks = extracted.chunks.map(c => c.text);
-
-    const required = deps.estimatePayloadBytes(article, content, textChunks);
     const quota = await deps.checkStorageQuota(required);
     if (!quota.canSave) {
       deps.emit({

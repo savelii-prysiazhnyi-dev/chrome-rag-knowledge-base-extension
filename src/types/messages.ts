@@ -30,6 +30,8 @@ export interface ArticleRecord {
   isStarred: boolean;
   /** Async ingestion lifecycle state */
   status: 'indexing' | 'indexed' | 'failed';
+  /** Serialized logical payload footprint in bytes (metadata + content + vectors) */
+  bytes?: number;
 }
 
 // Store 2: 'article_contents' (1:1 vertical partition for heavy full text & export)
@@ -76,7 +78,7 @@ export const DEFAULT_STORAGE_SETTINGS: StorageSettings = {
 
 // Storage Quota Status returned by checkStorageQuota()
 export interface StorageQuotaStatus {
-  /** Current storage usage in bytes from navigator.storage.estimate() */
+  /** Logical storage footprint in bytes consumed by saved articles and vector embeddings */
   currentUsageBytes: number;
   /** User-configured storage cap in bytes */
   maxStorageBytes: number;
@@ -96,7 +98,7 @@ export interface StorageQuotaStatus {
   canSave: boolean;
   /** Suggested new cap when expanding storage (e.g. 250 MB or 2x current cap) */
   suggestedNewCapBytes: number;
-  /** IndexedDB storage usage in bytes when supported by browser usageDetails */
+  /** Physical on-disk IndexedDB storage footprint in bytes from browser usageDetails.indexedDB (LevelDB WAL, SSTables, tombstones) */
   indexedDBUsageBytes?: number;
   /** Cache API usage in bytes (e.g., ONNX model weights) when supported by browser usageDetails */
   modelCacheUsageBytes?: number;

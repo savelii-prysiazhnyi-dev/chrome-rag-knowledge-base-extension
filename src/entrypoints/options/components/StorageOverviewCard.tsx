@@ -22,9 +22,7 @@ export function StorageOverviewCard({
   onSaveCap,
 }: StorageOverviewCardProps): React.JSX.Element {
   const usageMB = quotaStatus
-    ? formatBytesToMB(
-        quotaStatus.indexedDBUsageBytes ?? quotaStatus.currentUsageBytes,
-      )
+    ? formatBytesToMB(quotaStatus.currentUsageBytes)
     : '0.0';
   const maxMB = quotaStatus
     ? Math.round(quotaStatus.maxStorageBytes / (1024 * 1024))

@@ -215,34 +215,21 @@ Where:
      3. **One-Click Bulk Cleanup:** Purge all unstarred articles older than 60/90 days or all unstarred articles from a specific domain (`bulkDeleteUnstarred`).
 4. **Low Physical Disk Guardrail (`freePhysicalDiskBytes < 500 MB`):** Ingestion is strictly blocked regardless of the user's extension cap until space is freed on the host machine.
 
-### 6.4 Storage Isolation: IndexedDB vs. Browser Model Cache (`usageDetails`)
+### 6.4 Logical Storage Tracking vs. Physical LevelDB Footprint (`getLogicalStorageUsage`)
 
-In Chromium-based browsers, `navigator.storage.estimate()` returns total origin-wide storage (`estimate.usage`), which lumps together all origin storage mechanisms:
+In Chromium-based browsers, `navigator.storage.estimate()` reports the _physical on-disk directory footprint_ of the browser's storage engine. Chromium implements IndexedDB on top of **LevelDB**, an append-only Log-Structured Merge-tree (LSM). In LevelDB:
 
-1. **IndexedDB:** Relational metadata, partitioned text, and vector embeddings (`articles`, `article_contents`, `chunks`).
-2. **Cache API (`window.caches`):** The ~24.3 MB quantized ONNX model weights (`all-MiniLM-L6-v2`) cached by `@huggingface/transformers`.
-3. **Service Worker registrations & other origin storage.**
+1. **Write-Ahead Logs (WAL) & SSTables:** Every transaction creates write-ahead `.log` entries and immutable `.ldb` SSTable blocks with internal framing, block indices, and Bloom filter overhead.
+2. **Deletion Tombstones & Compaction Latency:** Deleting an article does not immediately shrink disk files; instead, LevelDB writes deletion tombstones. Physical disk space is only reclaimed when asynchronous background compaction runs. Prior to compaction, deleting articles can temporarily _increase_ physical disk consumption.
+3. **Empty Database Overhead:** Chromium pre-allocates LevelDB directory structures, resulting in 1.5 MB to 7.2 MB (3%–14% of a 50 MB budget) being reported on disk even with **0 saved articles**.
 
-If origin-wide `estimate.usage` were measured directly against the user's 50 MB budget, the static AI model weights (~24.3 MB) would immediately consume ~48.7% of the budget with zero articles saved.
+To deliver a deterministic, accurate, and trustworthy user experience, Second Brain implements **Logical Storage Tracking**:
 
-To isolate the user's article budget from the static AI model cache, `checkStorageQuota()` inspects Chromium's extended `StorageEstimate.usageDetails` dictionary (`ExtendedStorageEstimate`):
-
-```typescript
-export interface ExtendedStorageEstimate extends StorageEstimate {
-  usageDetails?: {
-    indexedDB?: number;
-    caches?: number;
-    serviceWorkerRegistrations?: number;
-    [key: string]: number | undefined;
-  };
-}
-```
-
-- When `extEstimate.usageDetails?.indexedDB !== undefined`:
-  - `currentUsageBytes` is assigned to `usageDetails.indexedDB`, ensuring the 50 MB budget strictly governs IndexedDB articles and vectors (~1,000–1,500 articles).
-  - `indexedDBUsageBytes` and `modelCacheUsageBytes` (`usageDetails.caches ?? 0`) are populated on `StorageQuotaStatus`.
-- When `usageDetails` is unavailable (e.g., non-Chromium or legacy environments), the gatekeeper falls back to `estimate.usage ?? 0`.
-- The Knowledge Manager (`options.html`) displays a dedicated indicator under the quota bar for the on-device AI model cache (`window.caches`), keeping it distinct and transparent.
+- **Per-Article Serialized Footprint (`ArticleRecord.bytes`):** During ingestion, `coordinator` calculates the total logical byte payload using `estimatePayloadBytes(article, content, textChunks)` and stores `bytes: required` on the `ArticleRecord`. This encapsulates metadata, vertically partitioned content (`article_contents`), and all passage chunks with their 1,536-byte `Float32Array` embeddings.
+- **Deterministic Baseline (`getLogicalStorageUsage()`):** When 0 articles exist, `getLogicalStorageUsage()` returns exactly `0`, guaranteeing a pristine **0.0 MB / 0% utilized** display in the Side Panel and Knowledge Manager.
+- **Immediate Deletion Reclaim:** Deleting articles via `deleteArticles()` or `bulkDeleteUnstarred()` immediately subtracts their logical bytes from storage metrics without waiting for LevelDB compaction.
+- **Legacy Record Migration:** For legacy articles saved before logical tracking was introduced, `getLogicalStorageUsage()` dynamically queries child contents and vector chunks, computes their payload footprint, and automatically backfills `article.bytes` into IndexedDB.
+- **Hardware Safety Circuit Breaker & Diagnostic Transparency:** `checkStorageQuota()` continues to populate `indexedDBUsageBytes` and `modelCacheUsageBytes` (`usageDetails.caches ?? 0`) for diagnostic transparency, while retaining the physical disk safety guardrail (`freePhysicalDiskBytes < 500 MB`) as an origin-wide circuit breaker. If IndexedDB query fails, it gracefully falls back to `indexedDBUsageBytes ?? totalUsageBytes`.
 
 ---
 
@@ -280,6 +267,7 @@ export function toggleArticleStar(
 ): Promise<ArticleRecord | undefined>;
 export function deleteArticles(articleIds): Promise<number>;
 export function bulkDeleteUnstarred(filter): Promise<number>;
+export function getLogicalStorageUsage(): Promise<number>;
 
 // Quota Gatekeeper
 export interface ExtendedStorageEstimate extends StorageEstimate { ... }

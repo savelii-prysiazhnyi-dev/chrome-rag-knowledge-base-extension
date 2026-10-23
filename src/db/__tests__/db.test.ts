@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   getDB,
   closeDB,
@@ -21,6 +21,7 @@ import {
   updateStorageCap,
   resetStorageSettingsForTesting,
   estimatePayloadBytes,
+  getLogicalStorageUsage,
   checkStorageQuota,
   LOW_PHYSICAL_DISK_BYTES,
   DEFAULT_SUGGESTED_EXPANSION_BYTES,
@@ -710,105 +711,304 @@ describe('Second Brain DB & Quota Gatekeeper', () => {
       expect(bytes).toBeLessThan(10000);
     });
 
-    it('reports normal quota status when well below threshold', async () => {
-      // 10 MB used out of 50 MB cap
-      mockNavigatorStorage(async () => ({
-        usage: 10 * 1024 * 1024,
-        quota: 20 * 1024 * 1024 * 1024,
-      }));
+    describe('Logical Storage Footprint Tracking', () => {
+      it('returns 0 when no articles exist', async () => {
+        const usage = await getLogicalStorageUsage();
+        expect(usage).toBe(0);
+      });
 
-      const quota = await checkStorageQuota(50 * 1024); // requesting 50 KB
-      expect(quota.currentUsageBytes).toBe(10 * 1024 * 1024);
-      expect(quota.maxStorageBytes).toBe(50 * 1024 * 1024);
-      expect(quota.usageRatio).toBeCloseTo(0.2, 2);
-      expect(quota.isWarning).toBe(false);
-      expect(quota.isExceeded).toBe(false);
-      expect(quota.isLowPhysicalDisk).toBe(false);
-      expect(quota.canSave).toBe(true);
-      expect(quota.suggestedNewCapBytes).toBe(
-        DEFAULT_SUGGESTED_EXPANSION_BYTES,
-      );
+      it('returns exact byte footprint when articles with chunks exist', async () => {
+        const art1: Omit<ArticleRecord, 'status'> = {
+          id: 'art-footprint-1',
+          url: 'https://example.com/1',
+          title: 'Article 1',
+          excerpt: 'Excerpt 1',
+          siteName: 'example.com',
+          savedAt: 1000,
+          updatedAt: 1000,
+          readingTimeMinutes: 2,
+          isStarred: false,
+          bytes: 4096,
+        };
+        const art2: Omit<ArticleRecord, 'status'> = {
+          id: 'art-footprint-2',
+          url: 'https://example.com/2',
+          title: 'Article 2',
+          excerpt: 'Excerpt 2',
+          siteName: 'example.com',
+          savedAt: 1000,
+          updatedAt: 1000,
+          readingTimeMinutes: 3,
+          isStarred: false,
+          bytes: 8192,
+        };
+        const content: Omit<ArticleContentRecord, 'articleId'> = {
+          contentText: 'Text',
+          contentMarkdown: '# Text',
+        };
+
+        await upsertArticleWithContent(art1, content);
+        await upsertArticleWithContent(art2, content);
+
+        const totalUsage = await getLogicalStorageUsage();
+        expect(totalUsage).toBe(12288); // 4096 + 8192
+      });
+
+      it('returns 0 after articles are deleted via deleteArticles or bulkDeleteUnstarred', async () => {
+        const art1: Omit<ArticleRecord, 'status'> = {
+          id: 'art-del-1',
+          url: 'https://example.com/del-1',
+          title: 'Delete 1',
+          excerpt: 'Excerpt',
+          siteName: 'example.com',
+          savedAt: 1000,
+          updatedAt: 1000,
+          readingTimeMinutes: 1,
+          isStarred: false,
+          bytes: 2048,
+        };
+        const art2: Omit<ArticleRecord, 'status'> = {
+          id: 'art-del-2',
+          url: 'https://example.com/del-2',
+          title: 'Delete 2',
+          excerpt: 'Excerpt',
+          siteName: 'example.com',
+          savedAt: 1000,
+          updatedAt: 1000,
+          readingTimeMinutes: 1,
+          isStarred: false,
+          bytes: 3072,
+        };
+        const content = { contentText: 'Text', contentMarkdown: '# Text' };
+
+        await upsertArticleWithContent(art1, content);
+        await upsertArticleWithContent(art2, content);
+        expect(await getLogicalStorageUsage()).toBe(5120);
+
+        await deleteArticles(['art-del-1']);
+        expect(await getLogicalStorageUsage()).toBe(3072);
+
+        await deleteArticles(['art-del-2']);
+        expect(await getLogicalStorageUsage()).toBe(0);
+
+        // Test bulkDeleteUnstarred
+        await upsertArticleWithContent(
+          {
+            ...art1,
+            id: 'art-bulk',
+            url: 'https://example.com/bulk',
+            bytes: 5000,
+          },
+          content,
+        );
+        expect(await getLogicalStorageUsage()).toBe(5000);
+        await bulkDeleteUnstarred({});
+        expect(await getLogicalStorageUsage()).toBe(0);
+      });
+
+      it('computes fallback byte size for legacy articles where bytes was omitted and caches back to store', async () => {
+        const legacyArt: Omit<ArticleRecord, 'status'> = {
+          id: 'art-legacy-1',
+          url: 'https://legacy.example.com/item',
+          title: 'Legacy Article Without Bytes',
+          excerpt: 'Legacy excerpt text.',
+          siteName: 'legacy.example.com',
+          savedAt: 1000,
+          updatedAt: 1000,
+          readingTimeMinutes: 4,
+          isStarred: false,
+        };
+        const legacyContent: Omit<ArticleContentRecord, 'articleId'> = {
+          contentText: 'Full body of legacy article.',
+          contentMarkdown: '# Full body of legacy article.',
+        };
+        await upsertArticleWithContent(legacyArt, legacyContent);
+        await saveArticleChunks('art-legacy-1', [
+          {
+            chunkIndex: 0,
+            text: 'First legacy chunk',
+            vector: new Float32Array(384),
+          },
+          {
+            chunkIndex: 1,
+            text: 'Second legacy chunk',
+            vector: new Float32Array(384),
+          },
+        ]);
+
+        const expectedEstimated = estimatePayloadBytes(
+          legacyArt,
+          legacyContent,
+          ['First legacy chunk', 'Second legacy chunk'],
+        );
+
+        const computedUsage = await getLogicalStorageUsage();
+        expect(computedUsage).toBe(expectedEstimated);
+        expect(computedUsage).toBeGreaterThan(0);
+
+        // Verify that bytes was cached back onto the ArticleRecord in IndexedDB
+        const stored = await getArticleById('art-legacy-1');
+        expect(stored?.bytes).toBe(expectedEstimated);
+
+        // Subsequent call uses the cached bytes directly
+        const secondCallUsage = await getLogicalStorageUsage();
+        expect(secondCallUsage).toBe(expectedEstimated);
+      });
     });
 
-    it('triggers warning at 85% usage threshold', async () => {
-      // 43 MB used out of 50 MB cap = 86% (> 85%)
-      mockNavigatorStorage(async () => ({
-        usage: 43 * 1024 * 1024,
-        quota: 20 * 1024 * 1024 * 1024,
-      }));
+    describe('checkStorageQuota with Logical Storage Tracking', () => {
+      it('returns currentUsageBytes: 0 and usageRatio: 0 when 0 articles are saved', async () => {
+        // Physical LevelDB has 10 MB on disk (WAL logs, SSTables)
+        mockNavigatorStorage(async () => ({
+          usage: 10 * 1024 * 1024,
+          quota: 50 * 1024 * 1024 * 1024,
+          usageDetails: {
+            indexedDB: 10 * 1024 * 1024,
+            caches: 24 * 1024 * 1024,
+          },
+        }));
 
-      const quota = await checkStorageQuota();
-      expect(quota.usageRatio).toBeGreaterThan(0.85);
-      expect(quota.isWarning).toBe(true);
-      expect(quota.isExceeded).toBe(false);
-      expect(quota.canSave).toBe(true);
-    });
+        const quota = await checkStorageQuota();
+        // Baseline must be strictly 0.0 MB / 0% utilized
+        expect(quota.currentUsageBytes).toBe(0);
+        expect(quota.usageRatio).toBe(0);
+        expect(quota.isWarning).toBe(false);
+        expect(quota.isExceeded).toBe(false);
+        expect(quota.canSave).toBe(true);
+        // Physical metrics retained for diagnostic transparency
+        expect(quota.indexedDBUsageBytes).toBe(10 * 1024 * 1024);
+        expect(quota.modelCacheUsageBytes).toBe(24 * 1024 * 1024);
+      });
 
-    it('blocks save and signals quota exceeded when cap is reached', async () => {
-      // 50 MB used out of 50 MB cap
-      mockNavigatorStorage(async () => ({
-        usage: 50 * 1024 * 1024,
-        quota: 20 * 1024 * 1024 * 1024,
-      }));
+      it('accurately tracks currentUsageBytes and usageRatio when articles are saved', async () => {
+        await upsertArticleWithContent(
+          {
+            id: 'tracked-art',
+            url: 'https://example.com/tracked',
+            title: 'Tracked Article',
+            excerpt: '',
+            siteName: 'example.com',
+            savedAt: 1000,
+            updatedAt: 1000,
+            readingTimeMinutes: 1,
+            isStarred: false,
+            bytes: 10 * 1024 * 1024, // 10 MB logical data
+          },
+          { contentText: '', contentMarkdown: '' },
+        );
 
-      const quota = await checkStorageQuota(1024); // requesting 1 KB
-      expect(quota.isExceeded).toBe(true);
-      expect(quota.canSave).toBe(false);
-      expect(quota.suggestedNewCapBytes).toBe(
-        DEFAULT_SUGGESTED_EXPANSION_BYTES,
-      );
+        const quota = await checkStorageQuota(50 * 1024); // requesting 50 KB
+        expect(quota.currentUsageBytes).toBe(10 * 1024 * 1024);
+        expect(quota.maxStorageBytes).toBe(50 * 1024 * 1024);
+        expect(quota.usageRatio).toBeCloseTo(0.2, 2);
+        expect(quota.isWarning).toBe(false);
+        expect(quota.isExceeded).toBe(false);
+        expect(quota.isLowPhysicalDisk).toBe(false);
+        expect(quota.canSave).toBe(true);
+        expect(quota.suggestedNewCapBytes).toBe(
+          DEFAULT_SUGGESTED_EXPANSION_BYTES,
+        );
+      });
 
-      // Now expand cap to 250 MB
-      await updateStorageCap(quota.suggestedNewCapBytes);
+      it('triggers warning at 85% usage threshold', async () => {
+        // 43 MB used out of 50 MB cap = 86% (> 85%)
+        await upsertArticleWithContent(
+          {
+            id: 'warn-art',
+            url: 'https://example.com/warn',
+            title: 'Warning Article',
+            excerpt: '',
+            siteName: 'example.com',
+            savedAt: 1000,
+            updatedAt: 1000,
+            readingTimeMinutes: 1,
+            isStarred: false,
+            bytes: 43 * 1024 * 1024,
+          },
+          { contentText: '', contentMarkdown: '' },
+        );
 
-      const afterExpansion = await checkStorageQuota(1024);
-      expect(afterExpansion.isExceeded).toBe(false);
-      expect(afterExpansion.canSave).toBe(true);
-      expect(afterExpansion.maxStorageBytes).toBe(250 * 1024 * 1024);
-      // Double cap for next expansion suggestion
-      expect(afterExpansion.suggestedNewCapBytes).toBe(500 * 1024 * 1024);
-    });
+        const quota = await checkStorageQuota();
+        expect(quota.currentUsageBytes).toBe(43 * 1024 * 1024);
+        expect(quota.usageRatio).toBeGreaterThan(0.85);
+        expect(quota.isWarning).toBe(true);
+        expect(quota.isExceeded).toBe(false);
+        expect(quota.canSave).toBe(true);
+      });
 
-    it('triggers low physical disk guardrail when remaining disk is under 500 MB', async () => {
-      // Pool quota: 600 MB, usage: 200 MB -> remaining disk: 400 MB (< 500 MB)
-      mockNavigatorStorage(async () => ({
-        usage: 200 * 1024 * 1024,
-        quota: 600 * 1024 * 1024,
-      }));
+      it('blocks save and signals quota exceeded when cap is reached', async () => {
+        // 50 MB used out of 50 MB cap
+        await upsertArticleWithContent(
+          {
+            id: 'full-art',
+            url: 'https://example.com/full',
+            title: 'Full Article',
+            excerpt: '',
+            siteName: 'example.com',
+            savedAt: 1000,
+            updatedAt: 1000,
+            readingTimeMinutes: 1,
+            isStarred: false,
+            bytes: 50 * 1024 * 1024,
+          },
+          { contentText: '', contentMarkdown: '' },
+        );
 
-      const quota = await checkStorageQuota();
-      expect(quota.freePhysicalDiskBytes).toBe(400 * 1024 * 1024);
-      expect(quota.freePhysicalDiskBytes).toBeLessThan(LOW_PHYSICAL_DISK_BYTES);
-      expect(quota.isLowPhysicalDisk).toBe(true);
-      expect(quota.canSave).toBe(false);
-    });
+        const quota = await checkStorageQuota(1024); // requesting 1 KB
+        expect(quota.currentUsageBytes).toBe(50 * 1024 * 1024);
+        expect(quota.isExceeded).toBe(true);
+        expect(quota.canSave).toBe(false);
+        expect(quota.suggestedNewCapBytes).toBe(
+          DEFAULT_SUGGESTED_EXPANSION_BYTES,
+        );
 
-    it('isolates IndexedDB storage from browser model cache via usageDetails', async () => {
-      // Total origin usage: ~29.3 MB (24.3 MB ONNX model cache in window.caches + 5 MB IndexedDB articles)
-      const indexedDBUsage = 5 * 1024 * 1024; // 5 MB
-      const modelCacheUsage = 24.3 * 1024 * 1024; // 24.3 MB
-      const totalOriginUsage = indexedDBUsage + modelCacheUsage; // 29.3 MB
+        // Expand cap to 250 MB
+        await updateStorageCap(quota.suggestedNewCapBytes);
 
-      mockNavigatorStorage(async () => ({
-        usage: totalOriginUsage,
-        quota: 50 * 1024 * 1024 * 1024, // 50 GB
-        usageDetails: {
-          indexedDB: indexedDBUsage,
-          caches: modelCacheUsage,
-        },
-      }));
+        const afterExpansion = await checkStorageQuota(1024);
+        expect(afterExpansion.isExceeded).toBe(false);
+        expect(afterExpansion.canSave).toBe(true);
+        expect(afterExpansion.maxStorageBytes).toBe(250 * 1024 * 1024);
+        // Double cap for next expansion suggestion
+        expect(afterExpansion.suggestedNewCapBytes).toBe(500 * 1024 * 1024);
+      });
 
-      const quota = await checkStorageQuota();
-      // Quota gatekeeper must strictly measure IndexedDB usage against the 50 MB budget (5 MB / 50 MB = 10%)
-      // rather than total origin storage (29.3 MB / 50 MB = 58.6%)
-      expect(quota.currentUsageBytes).toBe(indexedDBUsage);
-      expect(quota.indexedDBUsageBytes).toBe(indexedDBUsage);
-      expect(quota.modelCacheUsageBytes).toBe(modelCacheUsage);
-      expect(quota.maxStorageBytes).toBe(50 * 1024 * 1024);
-      expect(quota.usageRatio).toBeCloseTo(0.1, 2);
-      expect(quota.isWarning).toBe(false);
-      expect(quota.isExceeded).toBe(false);
-      expect(quota.canSave).toBe(true);
+      it('preserves hardware safety limit when physical disk has < 500 MB free', async () => {
+        // Pool quota: 600 MB, usage: 200 MB -> remaining disk: 400 MB (< 500 MB)
+        mockNavigatorStorage(async () => ({
+          usage: 200 * 1024 * 1024,
+          quota: 600 * 1024 * 1024,
+        }));
+
+        const quota = await checkStorageQuota();
+        expect(quota.freePhysicalDiskBytes).toBe(400 * 1024 * 1024);
+        expect(quota.freePhysicalDiskBytes).toBeLessThan(
+          LOW_PHYSICAL_DISK_BYTES,
+        );
+        expect(quota.isLowPhysicalDisk).toBe(true);
+        expect(quota.canSave).toBe(false);
+      });
+
+      it('falls back to physical usage when getLogicalStorageUsage fails', async () => {
+        const client = await import('../client');
+        const spy = vi
+          .spyOn(client, 'getDB')
+          .mockRejectedValueOnce(new Error('IndexedDB unavailable'));
+
+        mockNavigatorStorage(async () => ({
+          usage: 12 * 1024 * 1024,
+          quota: 50 * 1024 * 1024 * 1024,
+          usageDetails: {
+            indexedDB: 12 * 1024 * 1024,
+          },
+        }));
+
+        const quota = await checkStorageQuota();
+        expect(quota.currentUsageBytes).toBe(12 * 1024 * 1024);
+        expect(quota.indexedDBUsageBytes).toBe(12 * 1024 * 1024);
+
+        spy.mockRestore();
+      });
     });
   });
 });

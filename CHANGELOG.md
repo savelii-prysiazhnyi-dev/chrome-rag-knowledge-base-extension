@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Logical Storage Footprint Tracking (`getLogicalStorageUsage`):**
+  - Added optional `bytes?: number` field to `ArticleRecord` representing the total serialized payload footprint in bytes (metadata, partitioned content, passage chunks, and 1,536-byte `Float32Array` embeddings).
+  - Implemented `getLogicalStorageUsage()` in `src/db/repository.ts` and exported it from `src/db/index.ts`. Returns a deterministic `0` when no articles exist, sums cached `article.bytes` across records, and dynamically computes and backfills legacy records missing `bytes`.
+  - Updated `createCoordinator` in `src/entrypoints/background/coordinator.ts` to calculate and assign `bytes: required` during article ingestion.
+  - Updated `checkStorageQuota()` in `src/db/quota.ts` to use `getLogicalStorageUsage()` for `currentUsageBytes`, eliminating Chromium LevelDB WAL/SSTable/tombstone directory bloat (1.5–7.2 MB baseline) from storage meters while maintaining graceful fallback to physical metrics.
+  - Retained `indexedDBUsageBytes` and `modelCacheUsageBytes` from `navigator.storage.estimate()` for diagnostic inspection, and preserved host machine physical disk guardrail (`freePhysicalDiskBytes < 500 MB`).
+  - Updated `StorageFooter`, `StorageQuotaModal`, and `StorageOverviewCard` to display `quotaStatus.currentUsageBytes` directly for a clean 0.0 MB / 0% baseline with 0 articles saved.
+  - Added unit test suites in `src/db/__tests__/db.test.ts`, `coordinator.test.ts`, `sidepanelComponents.test.tsx`, and `optionsComponents.test.tsx`.
+  - Updated architectural storage documentation in `docs/storage-engine.md`.
+
 ### Changed
 
 - **Storage UI Simplification & Jargon Removal:**

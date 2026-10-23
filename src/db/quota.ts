@@ -5,6 +5,7 @@ import {
   type ArticleRecord,
   type ArticleContentRecord,
 } from '../types/messages';
+import { getLogicalStorageUsage } from './repository';
 
 export const LOW_PHYSICAL_DISK_BYTES = 500 * 1024 * 1024; // 500 MB
 export const DEFAULT_SUGGESTED_EXPANSION_BYTES = 250 * 1024 * 1024; // 250 MB
@@ -149,11 +150,12 @@ export async function checkStorageQuota(
         (await navigator.storage.estimate()) as ExtendedStorageEstimate;
       totalUsageBytes = estimate.usage ?? 0;
       if (estimate.usageDetails?.indexedDB !== undefined) {
-        currentUsageBytes = estimate.usageDetails.indexedDB;
         indexedDBUsageBytes = estimate.usageDetails.indexedDB;
-        modelCacheUsageBytes = estimate.usageDetails.caches ?? 0;
-      } else {
-        currentUsageBytes = totalUsageBytes;
+      }
+      if (estimate.usageDetails?.caches !== undefined) {
+        modelCacheUsageBytes = estimate.usageDetails.caches;
+      } else if (estimate.usageDetails?.indexedDB !== undefined) {
+        modelCacheUsageBytes = 0;
       }
       if (estimate.quota !== undefined) {
         browserQuotaBytes = estimate.quota;
@@ -164,6 +166,17 @@ export async function checkStorageQuota(
         err,
       );
     }
+  }
+
+  try {
+    const logicalBytes = await getLogicalStorageUsage();
+    currentUsageBytes = logicalBytes;
+  } catch (err) {
+    console.warn(
+      '[Second Brain Quota] getLogicalStorageUsage failed, falling back to physical usage:',
+      err,
+    );
+    currentUsageBytes = indexedDBUsageBytes ?? totalUsageBytes;
   }
 
   const freePhysicalDiskBytes = Math.max(

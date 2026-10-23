@@ -59,6 +59,7 @@ describe('coordinator.saveTab', () => {
       .calls[0]!;
     expect(article.faviconUrl).toBe('f.ico');
     expect(article.id).toBe('hash');
+    expect(article.bytes).toBe(100);
     expect(status).toBe('indexing');
     expect(deps.emit).toHaveBeenCalledWith({
       type: 'DATABASE_UPDATED',

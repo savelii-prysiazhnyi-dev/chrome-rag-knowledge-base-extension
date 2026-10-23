@@ -1,4 +1,5 @@
 import { getDB } from './client';
+import { estimatePayloadBytes } from './quota';
 import type {
   ArticleRecord,
   ArticleContentRecord,
@@ -41,6 +42,7 @@ export async function upsertArticleWithContent(
     : (article.isStarred ?? false);
   const finalStatus: ArticleRecord['status'] =
     status ?? (existing ? existing.status : 'indexing');
+  const finalBytes = article.bytes ?? existing?.bytes;
 
   // If existing record was found by URL but had a different ID, clean up the old ID
   if (existing && existing.id !== article.id) {
@@ -68,6 +70,7 @@ export async function upsertArticleWithContent(
     updatedAt: now,
     isStarred: finalIsStarred,
     status: finalStatus,
+    ...(finalBytes !== undefined ? { bytes: finalBytes } : {}),
   };
 
   await articlesStore.put(record);
@@ -363,4 +366,62 @@ export async function bulkDeleteUnstarred(filter: {
 
   await tx.done;
   return deletedCount;
+}
+
+/**
+ * Computes the total logical storage footprint in bytes across all saved articles,
+ * vertically partitioned content, and vector embeddings.
+ * Returns 0 if no articles exist.
+ * Uses cached article.bytes when available; otherwise dynamically computes
+ * and backfills article.bytes for legacy records.
+ */
+export async function getLogicalStorageUsage(): Promise<number> {
+  const db = await getDB();
+  const articles = await db.getAll('articles');
+  if (articles.length === 0) {
+    return 0;
+  }
+
+  let totalBytes = 0;
+  const backfillArticles: Array<{ id: string; bytes: number }> = [];
+
+  for (const article of articles) {
+    if (typeof article.bytes === 'number' && article.bytes > 0) {
+      totalBytes += article.bytes;
+    } else {
+      const content = await db.get('article_contents', article.id);
+      const chunks = await db.getAllFromIndex(
+        'chunks',
+        'by_articleId',
+        article.id,
+      );
+      const textChunks = chunks.map(c => c.text);
+      const computedBytes = estimatePayloadBytes(
+        article,
+        content ?? { contentText: '', contentMarkdown: '' },
+        textChunks,
+      );
+      totalBytes += computedBytes;
+      backfillArticles.push({ id: article.id, bytes: computedBytes });
+    }
+  }
+
+  if (backfillArticles.length > 0) {
+    try {
+      const tx = db.transaction('articles', 'readwrite');
+      const store = tx.objectStore('articles');
+      for (const item of backfillArticles) {
+        const current = await store.get(item.id);
+        if (current) {
+          current.bytes = item.bytes;
+          await store.put(current);
+        }
+      }
+      await tx.done;
+    } catch {
+      // Best-effort backfill caching; ignore transaction failure in read-only / restricted contexts
+    }
+  }
+
+  return totalBytes;
 }

@@ -389,6 +389,28 @@ describe('Side Panel Modernized Components', () => {
       });
       expect(onOpenQuotaModal).toHaveBeenCalledTimes(1);
     });
+
+    it('displays 0.0 MB and 0% utilized baseline when currentUsageBytes is 0 despite physical indexedDBUsageBytes', () => {
+      const root = createRoot(container);
+      act(() => {
+        root.render(
+          React.createElement(StorageFooter, {
+            quotaStatus: {
+              ...mockQuotaStatus,
+              currentUsageBytes: 0,
+              indexedDBUsageBytes: 5 * 1024 * 1024,
+              usageRatio: 0,
+            },
+            articlesCount: 0,
+            onOpenQuotaModal: vi.fn(),
+            onOpenKnowledgeManager: vi.fn(),
+          }),
+        );
+      });
+
+      expect(container.textContent).toContain('0.0 MB / 50 MB limit');
+      expect(container.textContent).toContain('0% utilized (0 articles)');
+    });
   });
 
   describe('StorageQuotaModal', () => {

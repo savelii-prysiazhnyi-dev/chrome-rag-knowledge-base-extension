@@ -203,6 +203,33 @@ describe('Options Modernized Components', () => {
       expect(container.textContent).toContain('1 saved article');
       expect(container.textContent).not.toContain('1 saved articles');
     });
+
+    it('displays 0.0 MB and 0% used baseline when currentUsageBytes is 0 despite physical indexedDBUsageBytes', () => {
+      const root = createRoot(container);
+      act(() => {
+        root.render(
+          React.createElement(StorageOverviewCard, {
+            quotaStatus: {
+              ...mockQuotaStatus,
+              currentUsageBytes: 0,
+              indexedDBUsageBytes: 7 * 1024 * 1024,
+              usageRatio: 0,
+            },
+            articlesCount: 0,
+            totalChunks: 0,
+            capInputMB: '50',
+            setCapInputMB: vi.fn(),
+            onSaveCap: vi.fn(),
+          }),
+        );
+      });
+
+      expect(container.textContent).toContain(
+        'Current Usage: 0.0 MB of 50 MB limit',
+      );
+      expect(container.textContent).toContain('0% used');
+      expect(container.textContent).toContain('0 saved articles');
+    });
   });
 
   describe('ArticlesTable', () => {
