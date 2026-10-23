@@ -47,10 +47,10 @@ export function StorageQuotaModal({
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-900">
-                Storage Quota Gatekeeper
+                Storage Limit Reached
               </h2>
               <p className="text-[11px] text-slate-500">
-                Using {usageMB} MB of {maxMB} MB approved cap
+                Using {usageMB} MB of {maxMB} MB limit
               </p>
             </div>
           </div>
@@ -77,7 +77,7 @@ export function StorageQuotaModal({
             1. Allocate Additional Disk Space
           </h3>
           <p className="mt-0.5 text-[11px] text-slate-500">
-            Set a new maximum local IndexedDB cap (MB):
+            Set a new storage limit (MB):
           </p>
           <div className="mt-2 flex items-center gap-2">
             <input

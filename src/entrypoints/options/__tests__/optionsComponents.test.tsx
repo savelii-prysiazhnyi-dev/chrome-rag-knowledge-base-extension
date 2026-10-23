@@ -99,7 +99,7 @@ describe('Options Modernized Components', () => {
       suggestedNewCapBytes: 100 * 1024 * 1024,
     };
 
-    it('renders cyan HardDrive icon, cyan progress bar, cyan model cache dot, and cyan active preset', () => {
+    it('renders clean title, subtitle, progress bar, presets, and save limit button without technical jargon', () => {
       const onSaveCap = vi.fn();
       const setCapInputMB = vi.fn();
       const root = createRoot(container);
@@ -117,6 +117,23 @@ describe('Options Modernized Components', () => {
         );
       });
 
+      // Title & Subtitle
+      expect(container.textContent).toContain('Storage Usage');
+      expect(container.textContent).not.toContain(
+        'User-Controlled Storage Quota',
+      );
+      expect(container.textContent).toContain(
+        'All saved articles and search data are stored locally on your device.',
+      );
+      expect(container.textContent).not.toContain('IndexedDB');
+      expect(container.textContent).not.toContain('strict 50 MB budget');
+
+      // Jargon and redundant badge removed
+      expect(container.textContent).not.toContain('Approved Cap');
+      expect(container.textContent).not.toContain('On-Device AI Model Cache');
+      expect(container.textContent).not.toContain('384-d Float32Array');
+      expect(container.textContent).not.toContain('Safety threshold');
+
       const iconBox = container.querySelector('.rounded-xl.bg-cyan-50');
       expect(iconBox).not.toBeNull();
       expect(iconBox?.className).toContain('text-cyan-700');
@@ -125,14 +142,18 @@ describe('Options Modernized Components', () => {
       const progressBar = container.querySelector('.bg-cyan-700.rounded-full');
       expect(progressBar).not.toBeNull();
 
-      // Model cache indicator dot
-      const modelCacheDot = container.querySelector(
-        '.bg-cyan-600.rounded-full',
-      );
-      expect(modelCacheDot).not.toBeNull();
+      // Progress bar details
       expect(container.textContent).toContain(
-        'On-Device AI Model Cache: 24.0 MB',
+        'Current Usage: 10.0 MB of 50 MB limit',
       );
+      expect(container.textContent).toContain('20% used');
+      expect(container.textContent).not.toContain('utilized');
+      expect(container.textContent).toContain('12 saved articles');
+
+      // Preset limits & Custom limit
+      expect(container.textContent).toContain('Preset limits:');
+      expect(container.textContent).not.toContain('Quick Cap Presets:');
+      expect(container.textContent).toContain('Custom limit (MB):');
 
       // Active preset button for 50 MB
       const buttons = Array.from(container.querySelectorAll('button'));
@@ -142,14 +163,17 @@ describe('Options Modernized Components', () => {
       expect(activePreset?.className).toContain('text-white');
       expect(activePreset?.className).toContain('hover:bg-cyan-800');
 
-      // Save Cap button
-      const saveCapBtn = buttons.find(
-        b => b.textContent?.trim() === 'Save Cap',
+      // Save limit button
+      const saveLimitBtn = buttons.find(
+        b => b.textContent?.trim() === 'Save limit',
       );
-      expect(saveCapBtn).toBeDefined();
-      expect(saveCapBtn?.className).toContain('bg-cyan-700');
-      expect(saveCapBtn?.className).toContain('hover:bg-cyan-800');
-      expect(saveCapBtn?.className).toContain('text-white');
+      expect(saveLimitBtn).toBeDefined();
+      expect(saveLimitBtn?.className).toContain('bg-cyan-700');
+      expect(saveLimitBtn?.className).toContain('hover:bg-cyan-800');
+      expect(saveLimitBtn?.className).toContain('text-white');
+      expect(buttons.some(b => b.textContent?.trim() === 'Save Cap')).toBe(
+        false,
+      );
 
       // Custom Limit input has conservative slate focus
       const customInput = container.querySelector('#custom-cap-input');
@@ -158,9 +182,26 @@ describe('Options Modernized Components', () => {
       expect(customInput?.className).not.toContain('focus:border-indigo-500');
 
       act(() => {
-        saveCapBtn?.click();
+        saveLimitBtn?.click();
       });
       expect(onSaveCap).toHaveBeenCalledTimes(1);
+    });
+
+    it('renders singular saved article count correctly', () => {
+      const root = createRoot(container);
+      act(() => {
+        root.render(
+          React.createElement(StorageOverviewCard, {
+            quotaStatus: mockQuotaStatus,
+            articlesCount: 1,
+            capInputMB: '50',
+            setCapInputMB: vi.fn(),
+            onSaveCap: vi.fn(),
+          }),
+        );
+      });
+      expect(container.textContent).toContain('1 saved article');
+      expect(container.textContent).not.toContain('1 saved articles');
     });
   });
 

@@ -55,10 +55,10 @@ export function StorageFooter({
           type="button"
           onClick={onOpenQuotaModal}
           className="flex items-center gap-1.5 hover:text-slate-900"
-          title="Configure Storage Budget"
+          title="Configure Storage Limit"
         >
           <HardDrive className="h-3.5 w-3.5 text-slate-400" />
-          <span className="font-medium">Storage Quota</span>
+          <span className="font-medium">Storage</span>
         </button>
         <span className="text-[11px] text-slate-500">
           {usageMB} MB / {maxMB} MB limit

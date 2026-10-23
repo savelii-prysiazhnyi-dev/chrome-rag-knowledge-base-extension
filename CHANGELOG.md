@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Storage UI Simplification & Jargon Removal:**
+  - **Storage Overview Card (`StorageOverviewCard.tsx`):**
+    - Updated section title to `"Storage Usage"` and subtitle to `"All saved articles and search data are stored locally on your device."`, removing all mentions of IndexedDB, strict budgets, and internal storage mechanisms.
+    - Removed redundant `"Approved Cap: {maxMB} MB"` badge and `ShieldCheck` icon.
+    - Simplified progress bar metrics to `"Current Usage: {usageMB} MB of {maxMB} MB limit"` and `"{usagePercent}% used"` (replacing "cap" and "utilized").
+    - Cleaned up article counter beneath the progress bar to show exclusively saved articles count (e.g. `12 saved articles` / `1 saved article`), removing `vector chunks (384-d Float32Array)` and safety threshold warnings.
+    - Removed the on-device AI model cache info block completely.
+    - Simplified cap editor labels from `"Quick Cap Presets:"` to `"Preset limits:"`, `"Custom Limit (MB):"` to `"Custom limit (MB):"`, and button label from `"Save Cap"` to `"Save limit"`.
+  - **Storage Quota Modal (`StorageQuotaModal.tsx`):**
+    - Updated title from `"Storage Quota Gatekeeper"` to `"Storage Limit Reached"`.
+    - Simplified usage subtitle to `"Using {usageMB} MB of {maxMB} MB limit"`.
+    - Replaced input prompt `"Set a new maximum local IndexedDB cap (MB):"` with `"Set a new storage limit (MB):"`.
+  - **Storage Footer (`StorageFooter.tsx`):**
+    - Changed button label from `"Storage Quota"` to `"Storage"`.
+    - Changed hover title from `"Configure Storage Budget"` to `"Configure Storage Limit"`.
+  - **Unit Testing:**
+    - Updated `StorageOverviewCard` tests in `src/entrypoints/options/__tests__/optionsComponents.test.tsx` to assert new clean title, subtitle, limits controls, "Save limit" button, singular/plural article counts, and confirm total absence of technical jargon (`Approved Cap`, `On-Device AI Model Cache`, `384-d Float32Array`, `Safety threshold`).
+    - Added unit test suites for `StorageFooter` and `StorageQuotaModal` in `src/entrypoints/sidepanel/__tests__/sidepanelComponents.test.tsx` verifying simplified labels and titles.
+
 - **Options Page Design System Modernization (Full Library & Knowledge Manager):**
   - **Header (`OptionsHeader.tsx`):** Removed the legacy purple icon container and `Brain` icon to align with the Side Panel header. Updated title to `"Second Brain — Full Library"` and subtitle to `"Semantic knowledge base in your browser, storage budget, and exports"`. Updated export button icon colors to `text-cyan-700`.
   - **Notification Banner (`App.tsx`):** Shifted notification alert from indigo to cyan theme (`border-cyan-200 bg-cyan-50/70 text-cyan-900`), with `text-cyan-700` for `CheckCircle2` and `text-cyan-600 hover:text-cyan-800` for dismiss.

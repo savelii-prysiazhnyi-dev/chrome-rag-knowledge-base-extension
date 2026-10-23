@@ -6,7 +6,13 @@ import { SidePanelHeader } from '../components/SidePanelHeader';
 import { ActiveTabBanner } from '../components/ActiveTabBanner';
 import { DomainFilterPills } from '../components/DomainFilterPills';
 import { SearchResultCard } from '../components/SearchResultCard';
-import type { ArticleRecord, SearchResultItem } from '../../../types/messages';
+import { StorageFooter } from '../components/StorageFooter';
+import { StorageQuotaModal } from '../components/StorageQuotaModal';
+import type {
+  ArticleRecord,
+  SearchResultItem,
+  StorageQuotaStatus,
+} from '../../../types/messages';
 
 (
   globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -330,6 +336,111 @@ describe('Side Panel Modernized Components', () => {
         card?.click();
       });
       expect(onClick).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('StorageFooter', () => {
+    const mockQuotaStatus: StorageQuotaStatus = {
+      currentUsageBytes: 15 * 1024 * 1024,
+      indexedDBUsageBytes: 15 * 1024 * 1024,
+      modelCacheUsageBytes: 0,
+      maxStorageBytes: 50 * 1024 * 1024,
+      browserQuotaBytes: 1024 * 1024 * 1024,
+      freePhysicalDiskBytes: 10 * 1024 * 1024 * 1024,
+      canSave: true,
+      usageRatio: 0.3,
+      isWarning: false,
+      isExceeded: false,
+      isLowPhysicalDisk: false,
+      suggestedNewCapBytes: 100 * 1024 * 1024,
+    };
+
+    it('renders "Storage" label and button with "Configure Storage Limit" title', () => {
+      const onOpenQuotaModal = vi.fn();
+      const onOpenKnowledgeManager = vi.fn();
+      const root = createRoot(container);
+
+      act(() => {
+        root.render(
+          React.createElement(StorageFooter, {
+            quotaStatus: mockQuotaStatus,
+            articlesCount: 5,
+            onOpenQuotaModal,
+            onOpenKnowledgeManager,
+          }),
+        );
+      });
+
+      expect(container.textContent).toContain('Storage');
+      expect(container.textContent).not.toContain('Storage Quota');
+
+      const configButton = container.querySelector<HTMLButtonElement>(
+        'button[title="Configure Storage Limit"]',
+      );
+      expect(configButton).not.toBeNull();
+      expect(
+        container.querySelector('button[title="Configure Storage Budget"]'),
+      ).toBeNull();
+
+      expect(container.textContent).toContain('15.0 MB / 50 MB limit');
+
+      act(() => {
+        configButton?.click();
+      });
+      expect(onOpenQuotaModal).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('StorageQuotaModal', () => {
+    const mockQuotaStatus: StorageQuotaStatus = {
+      currentUsageBytes: 50 * 1024 * 1024,
+      indexedDBUsageBytes: 50 * 1024 * 1024,
+      modelCacheUsageBytes: 0,
+      maxStorageBytes: 50 * 1024 * 1024,
+      browserQuotaBytes: 1024 * 1024 * 1024,
+      freePhysicalDiskBytes: 10 * 1024 * 1024 * 1024,
+      canSave: false,
+      usageRatio: 1.0,
+      isWarning: true,
+      isExceeded: true,
+      isLowPhysicalDisk: false,
+      suggestedNewCapBytes: 100 * 1024 * 1024,
+    };
+
+    it('renders "Storage Limit Reached" title and user-friendly labels without technical jargon', () => {
+      const onClose = vi.fn();
+      const onExpandCap = vi.fn();
+      const onQuickCleanup = vi.fn();
+      const onOpenKnowledgeManager = vi.fn();
+      const setCustomCapMB = vi.fn();
+      const root = createRoot(container);
+
+      act(() => {
+        root.render(
+          React.createElement(StorageQuotaModal, {
+            isOpen: true,
+            onClose,
+            quotaStatus: mockQuotaStatus,
+            customCapMB: '100',
+            setCustomCapMB,
+            onExpandCap,
+            onQuickCleanup,
+            onOpenKnowledgeManager,
+            quotaFeedback: null,
+          }),
+        );
+      });
+
+      expect(container.textContent).toContain('Storage Limit Reached');
+      expect(container.textContent).not.toContain('Storage Quota Gatekeeper');
+
+      expect(container.textContent).toContain('Using 50.0 MB of 50 MB limit');
+      expect(container.textContent).not.toContain('approved cap');
+
+      expect(container.textContent).toContain('Set a new storage limit (MB):');
+      expect(container.textContent).not.toContain(
+        'Set a new maximum local IndexedDB cap',
+      );
     });
   });
 });
