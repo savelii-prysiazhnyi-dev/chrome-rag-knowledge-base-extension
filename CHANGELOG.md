@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Non-Blocking Background AI Worker & Cooperative Job Queue:**
+  - Offloaded ONNX Runtime Web WASM / WebGPU neural embedding inference from the Extension Renderer main thread to a Dedicated Web Worker (`src/entrypoints/offscreen/worker.ts`), preventing Side Panel UI freezes and dropped frames during multi-chunk article indexing.
+  - Implemented `JobQueue` (`src/entrypoints/offscreen/jobQueue.ts`) providing sequential FIFO document ingestion alongside high-priority preemption for interactive search queries (`SEARCH_QUERY`, `FIND_RELATED_ARTICLES`).
+  - Text chunks are processed in batch slices (default 8) yielding between slices to ensure sub-second response times for search queries even during large indexing jobs.
+  - Worker accesses IndexedDB directly for `saveArticleChunks()`, `markArticleFailed()`, and search queries, eliminating massive `Float32Array` serialization over IPC.
+  - Refactored `src/entrypoints/offscreen/main.ts` into a lightweight message bridge between `chrome.runtime.onMessage` and the Web Worker.
+  - Added unit test suite in `src/entrypoints/offscreen/__tests__/jobQueue.test.ts`.
+
+- **Per-Tab Ingestion State in Side Panel (`useActiveTab.ts`):**
+  - Scoped saving loading state (`isSaving`) per tab using `savingTabIds: Set<number>` instead of a global boolean.
+  - Switching from a saving tab (Tab A) to another tab (Tab B) leaves Tab B immediately active, clickable, and responsive.
+  - Switching back to a saving tab correctly displays its current extraction/indexing status (`This page is saved • Indexing...` or saving indicator).
+  - Isolated runtime messages (`SAVE_STARTED`, `SAVE_FAILED`, `ARTICLE_INDEXED`, and `DATABASE_UPDATED`) to only modify the relevant tab's state, preventing errors or status resets on unrelated tabs.
+  - Added unit test suite in `src/entrypoints/sidepanel/hooks/__tests__/useActiveTabPerTab.test.tsx`.
+
 - **Knowledge Graph Extension Icons & Dynamic Active/Inactive Toolbar Switching:**
   - Designed and generated the 4-node connected Knowledge Graph icon assets in SVG and high-DPI rasterized PNG formats (16x16, 32x32, 48x48, 128x128) under `public/icons/`.
   - Configured active (`#13DFD6` luminous cyan) and inactive (`#94A3B8` mid-grey) visual states with transparent backgrounds.

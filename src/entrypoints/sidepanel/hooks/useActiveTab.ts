@@ -74,11 +74,16 @@ export function useActiveTab(
   const [savedArticle, setSavedArticle] = useState<ArticleRecord | undefined>(
     undefined,
   );
-  const [isSaving, setIsSaving] = useState<boolean>(false);
+  // Scoped per-tab saving state tracking in-flight tab IDs
+  const [savingTabIds, setSavingTabIds] = useState<Set<number>>(new Set());
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const activeTabIdRef = useRef<number | undefined>(activeTabId);
   const activeTabUrlRef = useRef<string>(activeTabUrl);
+  const savedArticleRef = useRef<ArticleRecord | undefined>(savedArticle);
+  const savingTabIdsRef = useRef<Set<number>>(savingTabIds);
+  const urlToTabIdRef = useRef<Map<string, number>>(new Map());
+  const articleIdToTabIdRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     activeTabIdRef.current = activeTabId;
@@ -87,6 +92,16 @@ export function useActiveTab(
   useEffect(() => {
     activeTabUrlRef.current = activeTabUrl;
   }, [activeTabUrl]);
+
+  useEffect(() => {
+    savedArticleRef.current = savedArticle;
+  }, [savedArticle]);
+
+  useEffect(() => {
+    savingTabIdsRef.current = savingTabIds;
+  }, [savingTabIds]);
+
+  const isSaving = activeTabId !== undefined && savingTabIds.has(activeTabId);
 
   const refreshActiveTab = useCallback(async () => {
     if (typeof chrome === 'undefined' || !chrome.tabs?.query) return;
@@ -127,33 +142,62 @@ export function useActiveTab(
   const saveOrUpdateTab = useCallback(async (): Promise<
     SaveTabResult | undefined
   > => {
+    const currentTabId = activeTabIdRef.current;
+    if (currentTabId === undefined) return undefined;
+
     setSaveError(null);
-    setIsSaving(true);
+    setSavingTabIds(prev => new Set(prev).add(currentTabId));
+    if (activeTabUrlRef.current) {
+      urlToTabIdRef.current.set(activeTabUrlRef.current, currentTabId);
+    }
     try {
       const response = (await chrome.runtime.sendMessage({
         type: 'SAVE_ACTIVE_TAB',
       } satisfies ExtensionMessage)) as SaveTabResult | undefined;
 
       if (!response) {
-        setIsSaving(false);
+        setSavingTabIds(prev => {
+          const next = new Set(prev);
+          next.delete(currentTabId);
+          return next;
+        });
         return undefined;
       }
 
       if (response.status === 'indexing') {
+        setSavingTabIds(prev => {
+          const next = new Set(prev);
+          next.delete(currentTabId);
+          return next;
+        });
+        if (response.articleId) {
+          articleIdToTabIdRef.current.set(response.articleId, currentTabId);
+        }
         await refreshActiveTab();
         onDataChange?.();
-        setIsSaving(false);
       } else if (response.status === 'quota_exceeded') {
-        setIsSaving(false);
+        setSavingTabIds(prev => {
+          const next = new Set(prev);
+          next.delete(currentTabId);
+          return next;
+        });
         onQuotaExceeded?.(250 * 1024 * 1024);
         onDataChange?.();
       } else {
-        setIsSaving(false);
+        setSavingTabIds(prev => {
+          const next = new Set(prev);
+          next.delete(currentTabId);
+          return next;
+        });
         setSaveError(describeSaveError(response));
       }
       return response;
     } catch (err) {
-      setIsSaving(false);
+      setSavingTabIds(prev => {
+        const next = new Set(prev);
+        next.delete(currentTabId);
+        return next;
+      });
       setSaveError(
         err instanceof Error ? err.message : 'Failed to save active tab.',
       );
@@ -212,36 +256,95 @@ export function useActiveTab(
 
     const handleRuntimeMessage = (message: ExtensionMessage) => {
       if (message.type === 'SAVE_STARTED') {
-        const matchesTab =
+        const { tabId, url } = message.payload;
+        if (url) {
+          urlToTabIdRef.current.set(url, tabId);
+        }
+        setSavingTabIds(prev => new Set(prev).add(tabId));
+        if (
           (activeTabIdRef.current !== undefined &&
-            message.payload.tabId === activeTabIdRef.current) ||
-          Boolean(
-            activeTabUrlRef.current &&
-            message.payload.url === activeTabUrlRef.current,
-          );
-        if (matchesTab) {
+            tabId === activeTabIdRef.current) ||
+          Boolean(url && activeTabUrlRef.current === url)
+        ) {
           setSaveError(null);
-          setIsSaving(true);
         }
       } else if (message.type === 'SAVE_FAILED') {
-        const matchesTab =
+        const { tabId, result } = message.payload;
+        setSavingTabIds(prev => {
+          const next = new Set(prev);
+          next.delete(tabId);
+          return next;
+        });
+        if (
           activeTabIdRef.current !== undefined &&
-          message.payload.tabId === activeTabIdRef.current;
-        if (matchesTab) {
-          setIsSaving(false);
-          setSaveError(describeSaveError(message.payload.result));
+          tabId === activeTabIdRef.current
+        ) {
+          setSaveError(describeSaveError(result));
         }
       } else if (message.type === 'ARTICLE_INDEXED') {
-        setIsSaving(false);
-        void refreshActiveTab();
+        const { articleId, url } = message.payload;
+        const targetTabId =
+          urlToTabIdRef.current.get(url) ??
+          articleIdToTabIdRef.current.get(articleId);
+
+        if (targetTabId !== undefined) {
+          setSavingTabIds(prev => {
+            const next = new Set(prev);
+            next.delete(targetTabId);
+            return next;
+          });
+        }
+
+        const matchesActiveTab =
+          Boolean(url && activeTabUrlRef.current === url) ||
+          Boolean(articleId && savedArticleRef.current?.id === articleId);
+
+        if (matchesActiveTab) {
+          void refreshActiveTab();
+        }
         onArticleIndexed?.(message.payload);
         onDataChange?.();
       } else if (message.type === 'DATABASE_UPDATED') {
-        setIsSaving(false);
-        void refreshActiveTab();
+        if (message.payload.reason === 'article_saved') {
+          const articleId = message.payload.articleId;
+          let targetTabId: number | undefined;
+          if (articleId) {
+            targetTabId = articleIdToTabIdRef.current.get(articleId);
+          }
+          if (targetTabId === undefined && savingTabIdsRef.current.size === 1) {
+            targetTabId = Array.from(savingTabIdsRef.current)[0];
+          }
+          if (
+            targetTabId === undefined &&
+            activeTabIdRef.current !== undefined &&
+            savingTabIdsRef.current.has(activeTabIdRef.current)
+          ) {
+            targetTabId = activeTabIdRef.current;
+          }
+
+          if (targetTabId !== undefined) {
+            setSavingTabIds(prev => {
+              const next = new Set(prev);
+              next.delete(targetTabId!);
+              return next;
+            });
+          }
+
+          const matchesActiveTab =
+            targetTabId === undefined ||
+            (activeTabIdRef.current !== undefined &&
+              targetTabId === activeTabIdRef.current) ||
+            Boolean(articleId && savedArticleRef.current?.id === articleId);
+
+          if (matchesActiveTab) {
+            void refreshActiveTab();
+          }
+        } else {
+          void refreshActiveTab();
+        }
         onDataChange?.();
       } else if (message.type === 'STORAGE_QUOTA_EXCEEDED') {
-        setIsSaving(false);
+        setSavingTabIds(new Set());
         onQuotaExceeded?.(message.payload.suggestedNewCapBytes);
         onDataChange?.();
       }
