@@ -47,6 +47,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **ONNX Runtime Web Bundle Size Optimization (~50% Reduction):**
+  - Pruned unused ONNX Runtime Web WASM variants (`.jspi` experimental builds and multi-threaded builds requiring `SharedArrayBuffer`) from `wxt.config.ts`, bundling exclusively the two required flavors: `ort-wasm-simd-threaded.jsep.*` (WebGPU) and `ort-wasm-simd-threaded.asyncify.*` (WASM CPU fallback).
+  - Implemented `vite-plugin-eliminate-duplicate-wasm` in `wxt.config.ts` to prevent Vite from emitting an orphaned 26.86 MB copy of `ort-wasm-simd-threaded.asyncify.wasm` into `assets/`.
+  - Reduced total unpacked extension footprint from ~114.5 MB to **56.5 MB** and `.zip` distribution archive from ~28 MB to **13.7 MB** with 0 functionality loss.
+  - Updated `docs/embedding-pipeline.md` reflecting the optimized runtime asset footprint.
+
 - **Storage UI Simplification & Jargon Removal:**
   - **Storage Overview Card (`StorageOverviewCard.tsx`):**
     - Updated section title to `"Storage Usage"` and subtitle to `"All saved articles and search data are stored locally on your device."`, removing all mentions of IndexedDB, strict budgets, and internal storage mechanisms.

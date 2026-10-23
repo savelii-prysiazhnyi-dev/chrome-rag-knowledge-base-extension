@@ -9,9 +9,15 @@ const requireFromTransformers = createRequire(
   createRequire(import.meta.url).resolve('@huggingface/transformers'),
 );
 const ortDist = dirname(requireFromTransformers.resolve('onnxruntime-web'));
-// Bundle ONNX Runtime WASM + loader locally (MV3 CSP forbids remote code).
-// Include all builds (standard, asyncify, jspi, jsep) so single-threaded non-isolated extension pages can load.
-const ORT_ASSETS = readdirSync(ortDist).filter(f => f.startsWith('ort-wasm'));
+// Only bundle the two required WASM execution variants:
+// 1. ort-wasm-simd-threaded.jsep.* for hardware WebGPU acceleration
+// 2. ort-wasm-simd-threaded.asyncify.* for single-threaded WASM CPU fallback
+// Exclude multi-threaded (requires unavailable SharedArrayBuffer) and experimental jspi builds.
+const ORT_ASSETS = readdirSync(ortDist).filter(
+  f =>
+    (f.includes('jsep') || f.includes('asyncify')) &&
+    (f.endsWith('.wasm') || f.endsWith('.mjs')),
+);
 
 export default defineConfig({
   srcDir: 'src',
@@ -27,7 +33,24 @@ export default defineConfig({
     },
   },
   vite: () => ({
-    plugins: [tailwindcss()],
+    plugins: [
+      tailwindcss(),
+      {
+        name: 'vite-plugin-eliminate-duplicate-wasm',
+        generateBundle(_options, bundle) {
+          // Eliminate duplicate WASM assets emitted into assets/ by Vite's static asset analyzer.
+          // ONNX Runtime Web loads WASM assets directly from chrome.runtime.getURL('ort/').
+          for (const fileName of Object.keys(bundle)) {
+            if (
+              fileName.startsWith('assets/ort-wasm') ||
+              (fileName.startsWith('assets/') && fileName.endsWith('.wasm'))
+            ) {
+              delete bundle[fileName];
+            }
+          }
+        },
+      },
+    ],
   }),
   manifest: {
     name: 'Second Brain — Local RAG Knowledge Assistant',
