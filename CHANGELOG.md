@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Comprehensive Technical Documentation & Production README (`README.md`):**
+  - Authored an exhaustive, production-grade `README.md` providing end-to-end documentation across the entire project.
+  - Included interactive process topology ASCII/Unicode architecture diagrams, execution realm boundaries, and zero-IPC binary vector storage explanation.
+  - Added full annotated directory tree covering `src/`, `docs/`, `public/`, and configuration files.
+  - Authored step-by-step Chrome installation and developer setup guides with keyboard shortcuts and pinning instructions.
+  - Documented core technical subsystems referencing the 6 architectural specifications in `docs/`.
+  - Added Manifest V3 entrypoints overview and complete internal IPC messaging contracts table.
+  - Documented security, privacy, CSP compliance model, and full table of verification scripts.
+
 - **Knowledge Graph Extension Icons & Dynamic Active/Inactive Toolbar Switching:**
   - Designed and generated the 4-node connected Knowledge Graph icon assets in SVG and high-DPI rasterized PNG formats (16x16, 32x32, 48x48, 128x128) under `public/icons/`.
   - Configured active (`#13DFD6` luminous cyan) and inactive (`#94A3B8` mid-grey) visual states with transparent backgrounds.
