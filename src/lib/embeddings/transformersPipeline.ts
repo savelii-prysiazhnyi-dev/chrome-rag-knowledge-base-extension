@@ -47,43 +47,19 @@ export async function hasUsableWebGpu(): Promise<boolean> {
   }
 }
 
-let configuredWasmPaths: string | undefined;
-
 /**
- * Explicitly configures the base URL / path for ONNX Runtime WASM assets.
- * Useful in Web Worker environments where `chrome.runtime.getURL` might not be directly available.
- */
-export function setWasmPaths(wasmPaths: string | undefined): void {
-  configuredWasmPaths = wasmPaths;
-}
-
-export function getWasmPaths(): string | undefined {
-  return configuredWasmPaths;
-}
-
-/**
- * Loads the real Transformers.js pipeline. Browser-only (offscreen document / worker);
+ * Loads the real Transformers.js pipeline. Browser-only (offscreen document);
  * never imported by unit tests. ONNX Runtime WASM/.mjs files are bundled under
  * `ort/` (see wxt.config.ts) so no remote code is fetched (MV3 CSP). Only model
  * weights are downloaded from the HF hub on first run, then served by Cache API.
  */
-export async function loadTransformersExtractor(options?: {
-  wasmPaths?: string;
-}): Promise<FeatureExtractor> {
+export async function loadTransformersExtractor(): Promise<FeatureExtractor> {
   const { pipeline, env } = await import('@huggingface/transformers');
   env.allowLocalModels = false;
   env.useBrowserCache = true;
   const onnx = env.backends.onnx;
   if (onnx.wasm) {
-    const wasmPaths =
-      options?.wasmPaths ??
-      configuredWasmPaths ??
-      (typeof chrome !== 'undefined' && chrome.runtime?.getURL
-        ? chrome.runtime.getURL('ort/')
-        : undefined);
-    if (wasmPaths) {
-      onnx.wasm.wasmPaths = wasmPaths;
-    }
+    onnx.wasm.wasmPaths = chrome.runtime.getURL('ort/');
     onnx.wasm.numThreads = 1; // no cross-origin isolation => no SharedArrayBuffer
     onnx.wasm.proxy = false;
   }
@@ -99,13 +75,10 @@ export async function loadTransformersExtractor(options?: {
         device,
         dtype: device === 'webgpu' ? 'fp32' : 'q8',
       });
-      console.log(`[Second Brain Offscreen/Worker] Model ready on ${device}`);
+      console.log(`[Second Brain Offscreen] Model ready on ${device}`);
       return extractor as unknown as FeatureExtractor;
     } catch (err) {
-      console.warn(
-        `[Second Brain Offscreen/Worker] ${device} init failed:`,
-        err,
-      );
+      console.warn(`[Second Brain Offscreen] ${device} init failed:`, err);
       lastErr = err;
     }
   }

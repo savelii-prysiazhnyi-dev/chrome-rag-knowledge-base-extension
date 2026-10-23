@@ -86,19 +86,15 @@ Building a privacy-first, local-first semantic retrieval system within these con
   1. **Non-Destructive Extraction:** Uses `document.cloneNode(true)` to extract clean article text, metadata, and Markdown (`@mozilla/readability` + `DOMPurify` + `turndown`) without touching the live page DOM.
   2. **Recursive Token-Safe Chunking:** Splits plain text into ~150–180 word overlapping passages respecting sentence boundaries to stay within the 256-token limit of `all-MiniLM-L6-v2`.
 
-### 3.3 Offscreen Document & Dedicated AI Web Worker (`src/entrypoints/offscreen/`)
+### 3.3 Offscreen Document (`src/entrypoints/offscreen/index.html` & `main.ts`)
 
-- **Process Type:** Extension Renderer process (hidden window) + Dedicated Web Worker (`worker.ts`) executing on an isolated background OS thread.
-- **DOM & Worker Access:** **Full DOM, Web Worker, WebGPU, and Worker IndexedDB access**.
-- **Architectural Rationale:**
-  - Manifest V3 Background Service Workers do not support the WebGPU API (`navigator.gpu` is unavailable in Service Workers in Chrome MV3) and have constrained WebAssembly compilation limits. Chrome introduced the **Offscreen Documents API** (`chrome.offscreen`) specifically to run compute tasks that cannot run in service workers.
-  - Furthermore, in Chromium, all extension pages (`sidepanel.html`, `options.html`, `offscreen.html`) share the same Blink main thread. If ONNX Runtime Web ran directly in `main.ts`, the Side Panel UI would freeze during document embedding.
-  - To keep the UI running at 60 FPS without dropping frames, `main.ts` spawns a Dedicated Web Worker (`src/entrypoints/offscreen/worker.ts`), which runs the neural network and vector math completely off the main thread.
+- **Process Type:** Extension Renderer process (hidden window).
+- **DOM Access:** **Full DOM, Web Worker, and WebGPU access**.
+- **Architectural Rationale:** Manifest V3 Background Service Workers do not support the WebGPU API (`navigator.gpu` is unavailable in Service Workers in Chrome MV3) and have constrained WebAssembly compilation limits. Chrome introduced the **Offscreen Documents API** (`chrome.offscreen`) specifically to run DOM-dependent, audio, or high-performance compute tasks that cannot run in service workers.
 - **Key Responsibilities:**
-  1. **IPC Bridge (`main.ts`):** Listens to `chrome.runtime.onMessage` for `GENERATE_EMBEDDINGS_JOB`, `SEARCH_QUERY`, and `FIND_RELATED_ARTICLES`, routing them to the worker thread.
-  2. **Dedicated ML Worker (`worker.ts`):** Loads `@huggingface/transformers` (v3) and ONNX Runtime Web on its dedicated background thread.
-  3. **Cooperative Priority Job Queue (`jobQueue.ts`):** Slices embedding tasks into batches of 8 chunks and yields between slices, pre-empting for high-priority interactive search queries.
-  4. **Direct IndexedDB Persistence:** Reads and writes directly to IndexedDB from the worker thread (`saveArticleChunks`, `getAllChunks`), eliminating multi-megabyte Float32Array IPC serialization.
+  1. Loads `@huggingface/transformers` (v3) and ONNX Runtime Web.
+  2. Generates 384-dimensional normalized `Float32Array` vectors for text chunks via WebGPU / WASM SIMD.
+  3. Reads directly from the shared `chrome-extension://<id>` IndexedDB instance to perform hybrid cosine + lexical retrieval, eliminating multi-megabyte IPC serialization overhead across Chrome processes.
 
 ### 3.4 Side Panel Companion UI (`src/entrypoints/sidepanel/index.html`, `main.tsx`, `App.tsx`)
 

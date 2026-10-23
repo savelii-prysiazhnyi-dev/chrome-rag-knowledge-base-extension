@@ -1,88 +1,49 @@
 import type { ExtensionMessage } from '../../types/messages';
-import type {
-  MainToWorkerMessage,
-  WorkerToMainMessage,
-} from './workerMessages';
+import {
+  getAllChunks,
+  getDB,
+  markArticleFailed,
+  saveArticleChunks,
+} from '../../db';
+import { Embedder } from '../../lib/embeddings';
+import { loadTransformersExtractor } from '../../lib/embeddings/transformersPipeline';
+import { rankChunksToArticles } from '../../lib/search';
 
 console.log('[Second Brain] Offscreen Document AI Worker initialized.');
 
+// Lazy singleton: the model is only loaded on the first job/query.
+const embedder = new Embedder(loadTransformersExtractor);
+
 type Routed = ExtensionMessage & { target?: string };
 
-// Dedicated Web Worker running on an isolated background OS thread
-const worker = new Worker(new URL('./worker.ts', import.meta.url), {
-  type: 'module',
-});
-
-// Pass extension runtime configuration (such as local WASM paths) to the worker
-const wasmPaths =
-  typeof chrome !== 'undefined' && chrome.runtime?.getURL
-    ? chrome.runtime.getURL('ort/')
-    : undefined;
-
-worker.postMessage({
-  type: 'INIT',
-  payload: { wasmPaths },
-} satisfies MainToWorkerMessage);
-
-const pendingCallbacks = new Map<string, (msg: WorkerToMainMessage) => void>();
-
-worker.addEventListener(
-  'message',
-  (event: MessageEvent<WorkerToMainMessage>) => {
-    const msg = event.data;
-    if (!msg || !msg.type) return;
-
-    switch (msg.type) {
-      case 'ARTICLE_INDEXED': {
-        // Forward completion to background coordinator and UI listeners
-        chrome.runtime
-          .sendMessage({
-            type: 'ARTICLE_INDEXED',
-            payload: msg.payload,
-          } satisfies ExtensionMessage)
-          .catch(() => {});
-        break;
-      }
-
-      case 'ARTICLE_FAILED': {
-        console.error(
-          '[Second Brain Offscreen] Article embedding failed in worker:',
-          msg.payload,
-        );
-        break;
-      }
-
-      case 'SEARCH_RESULTS':
-      case 'ERROR': {
-        if (msg.id && pendingCallbacks.has(msg.id)) {
-          const cb = pendingCallbacks.get(msg.id);
-          pendingCallbacks.delete(msg.id);
-          cb?.(msg);
-        }
-        break;
-      }
-
-      case 'INIT_OK':
-        break;
-
-      default:
-        break;
-    }
-  },
-);
-
-worker.addEventListener('error', err => {
-  console.error('[Second Brain Offscreen] Web Worker unhandled error:', err);
-  // Clear any pending search requests so callers don't hang
-  for (const [id, cb] of pendingCallbacks.entries()) {
-    cb({
-      type: 'SEARCH_RESULTS',
-      id,
-      payload: { results: [] },
-    });
+async function handleJob(
+  articleId: string,
+  textChunks: string[],
+): Promise<void> {
+  try {
+    const vectors = await embedder.embed(textChunks);
+    await saveArticleChunks(
+      articleId,
+      textChunks.map((text, chunkIndex) => ({
+        chunkIndex,
+        text,
+        vector: vectors[chunkIndex] as Float32Array,
+      })),
+    );
+    const db = await getDB();
+    const article = await db.get('articles', articleId);
+    // Guard: background may not be listening (no receiver) — never throw.
+    chrome.runtime
+      .sendMessage({
+        type: 'ARTICLE_INDEXED',
+        payload: { articleId, url: article?.url ?? '' },
+      } satisfies ExtensionMessage)
+      .catch(() => {});
+  } catch (err) {
+    console.error('[Second Brain Offscreen] Embedding job failed:', err);
+    await markArticleFailed(articleId).catch(() => {});
   }
-  pendingCallbacks.clear();
-});
+}
 
 chrome.runtime.onMessage.addListener(
   (
@@ -96,48 +57,83 @@ chrome.runtime.onMessage.addListener(
     switch (message.type) {
       case 'GENERATE_EMBEDDINGS_JOB': {
         const { articleId, textChunks } = message.payload;
-        // Ack immediately; background coordinator continues while worker indexes in the background
+        // Ack immediately; indexing outcome is reported via ARTICLE_INDEXED / IDB status.
         sendResponse({ status: 'accepted', articleId });
-        const id = crypto.randomUUID();
-        worker.postMessage({
-          type: 'EMBED_ARTICLE',
-          id,
-          payload: { articleId, textChunks },
-        } satisfies MainToWorkerMessage);
+        void handleJob(articleId, textChunks);
         return true;
       }
 
       case 'SEARCH_QUERY': {
-        const id = crypto.randomUUID();
-        pendingCallbacks.set(id, msg => {
-          if (msg.type === 'SEARCH_RESULTS') {
-            sendResponse({ type: 'SEARCH_RESULTS', payload: msg.payload });
-          } else {
+        const { query, topK, domainFilter, starredOnly } = message.payload;
+        (async () => {
+          try {
+            if (!query?.trim()) {
+              sendResponse({
+                type: 'SEARCH_RESULTS',
+                payload: { results: [] },
+              });
+              return;
+            }
+            const queryVector = await embedder.embedOne(query);
+            const db = await getDB();
+            const [chunks, articles] = await Promise.all([
+              getAllChunks(),
+              db.getAll('articles'),
+            ]);
+            const results = rankChunksToArticles({
+              queryVector,
+              queryText: query,
+              chunks,
+              articles,
+              topK,
+              domainFilter,
+              starredOnly,
+            });
+            sendResponse({ type: 'SEARCH_RESULTS', payload: { results } });
+          } catch (err) {
+            console.error('[Second Brain Offscreen] Search failed:', err);
             sendResponse({ type: 'SEARCH_RESULTS', payload: { results: [] } });
           }
-        });
-        worker.postMessage({
-          type: 'SEARCH',
-          id,
-          payload: message.payload,
-        } satisfies MainToWorkerMessage);
+        })();
         return true;
       }
 
       case 'FIND_RELATED_ARTICLES': {
-        const id = crypto.randomUUID();
-        pendingCallbacks.set(id, msg => {
-          if (msg.type === 'SEARCH_RESULTS') {
-            sendResponse({ type: 'SEARCH_RESULTS', payload: msg.payload });
-          } else {
+        const { text, excludeArticleId, topK = 3 } = message.payload;
+        (async () => {
+          try {
+            if (!text?.trim()) {
+              sendResponse({
+                type: 'SEARCH_RESULTS',
+                payload: { results: [] },
+              });
+              return;
+            }
+            const queryVector = await embedder.embedOne(text);
+            const db = await getDB();
+            const [chunks, allArticles] = await Promise.all([
+              getAllChunks(),
+              db.getAll('articles'),
+            ]);
+            const articles = excludeArticleId
+              ? allArticles.filter(a => a.id !== excludeArticleId)
+              : allArticles;
+            const results = rankChunksToArticles({
+              queryVector,
+              queryText: text,
+              chunks,
+              articles,
+              topK,
+            });
+            sendResponse({ type: 'SEARCH_RESULTS', payload: { results } });
+          } catch (err) {
+            console.error(
+              '[Second Brain Offscreen] Find related articles failed:',
+              err,
+            );
             sendResponse({ type: 'SEARCH_RESULTS', payload: { results: [] } });
           }
-        });
-        worker.postMessage({
-          type: 'FIND_RELATED',
-          id,
-          payload: message.payload,
-        } satisfies MainToWorkerMessage);
+        })();
         return true;
       }
 
