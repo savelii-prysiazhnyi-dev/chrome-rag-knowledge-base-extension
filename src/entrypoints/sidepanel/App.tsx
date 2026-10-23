@@ -126,7 +126,7 @@ export default function App(): React.JSX.Element {
 
   return (
     <div className="flex h-screen w-full flex-col bg-slate-50 text-slate-800">
-      <header className="border-b border-slate-200 bg-white px-4 py-3 shadow-xs">
+      <header className="bg-white px-4 pt-3 pb-1">
         <SidePanelHeader onOpenKnowledgeManager={handleOpenKnowledgeManager} />
         <ActiveTabBanner
           savedArticle={activeTab.savedArticle}
@@ -137,9 +137,10 @@ export default function App(): React.JSX.Element {
           onRemove={() => void handleRemoveActiveTab()}
           onDismissError={() => activeTab.setSaveError(null)}
         />
+        <div className="mx-auto my-3 h-px w-3/5 bg-slate-200" />
       </header>
 
-      <div className="border-b border-slate-200 bg-white px-4 py-2.5">
+      <div className="border-b border-slate-200 bg-white px-4 pt-0.5 pb-3">
         <SearchBar
           value={search.searchQuery}
           onChange={search.setSearchQuery}

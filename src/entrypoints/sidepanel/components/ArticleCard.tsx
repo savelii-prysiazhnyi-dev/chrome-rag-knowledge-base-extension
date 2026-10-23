@@ -19,7 +19,7 @@ export function ArticleCard({
   return (
     <article
       onClick={() => void onClick()}
-      className="group cursor-pointer rounded-lg border border-slate-200 bg-white p-3 shadow-2xs transition-all hover:border-slate-300 hover:shadow-xs"
+      className="group cursor-pointer rounded-lg border border-slate-200 bg-white p-3 shadow-2xs transition-all hover:border-slate-300 hover:bg-slate-50/30 hover:shadow-xs"
     >
       <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500">
         <div className="flex min-w-0 items-center gap-1.5">
@@ -87,7 +87,7 @@ export function ArticleCard({
         </div>
       </div>
 
-      <h3 className="mt-1.5 line-clamp-2 text-xs font-semibold text-slate-900 group-hover:text-cyan-700">
+      <h3 className="mt-1.5 line-clamp-2 text-xs font-semibold text-slate-800 transition-colors group-hover:text-slate-900">
         {article.title}
       </h3>
 

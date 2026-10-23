@@ -80,8 +80,8 @@ describe('Side Panel Modernized Components', () => {
       });
 
       expect(container.textContent).toContain('https://example.com/article-1');
-      expect(container.textContent).toContain('Not saved yet');
-      expect(container.textContent).toContain('Remember');
+      expect(container.textContent).toContain('Remember this page');
+      expect(container.textContent).not.toContain('Not saved yet');
 
       const copyBtn = container.querySelector('button');
       await act(async () => {
@@ -94,7 +94,7 @@ describe('Side Panel Modernized Components', () => {
       expect(container.textContent).toContain('Copied!');
     });
 
-    it('renders saved state with reading time and indexing indicator, and text-only buttons', () => {
+    it('renders saved state with reading time and indexing indicator, and equal-width buttons', () => {
       const mockArticle: ArticleRecord = {
         id: '123',
         url: 'https://example.com/article-1',
@@ -126,7 +126,7 @@ describe('Side Panel Modernized Components', () => {
         );
       });
 
-      expect(container.textContent).toContain('Saved in Second Brain');
+      expect(container.textContent).toContain('This page is saved');
       expect(container.textContent).toContain('5 min read');
       expect(container.textContent).toContain('Indexing…');
 
@@ -136,6 +136,10 @@ describe('Side Panel Modernized Components', () => {
 
       expect(updateBtn).toBeDefined();
       expect(deleteBtn).toBeDefined();
+      expect(updateBtn?.className).toContain('flex-1');
+      expect(deleteBtn?.className).toContain('flex-1');
+      expect(updateBtn?.className).toContain('bg-cyan-700');
+      expect(deleteBtn?.className).toContain('border-slate-200');
 
       act(() => {
         updateBtn?.click();

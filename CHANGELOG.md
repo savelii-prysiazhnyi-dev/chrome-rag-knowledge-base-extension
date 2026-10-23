@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Side Panel Layout, Active Tab States & Conservative Hover Styles:**
+  - Added centered dull grey middle separator (`<div className="mx-auto my-3 h-px w-3/5 bg-slate-200" />`) under the header in `src/entrypoints/sidepanel/App.tsx`, replacing the harsh start-to-end border and introducing balanced vertical breathing room between the active tab header block and search bar.
+  - Redesigned `ActiveTabBanner.tsx` with distinct active states:
+    - **Not Saved State:** Displays a full-width (`w-full`) "Remember this page" primary cyan button (`bg-cyan-700 hover:bg-cyan-800 active:bg-cyan-900 text-white font-medium py-2 text-xs rounded-md shadow-2xs`).
+    - **Saved State:** Displays a check indicator ("This page is saved") alongside reading time and indexing status under the link pill, followed by balanced equal-width "Update" (primary cyan) and "Delete" (conservative border button) actions spanning the row.
+  - Refined interaction styles across side panel components with conservative and understated hover/focus states:
+    - `SearchBar.tsx`: Conservative slate focus border and ring (`focus:border-slate-400 focus:ring-slate-300/60`).
+    - `ArticleCard.tsx` & `SearchResultCard.tsx`: Subtle hover border and background (`hover:border-slate-300 hover:bg-slate-50/30`), with understated title hover (`group-hover:text-slate-900`).
+    - `DomainFilterPills.tsx`: Conservative slate hover styling on filter pills and dropdown items (`hover:bg-slate-100 hover:text-slate-900`), and clean selected indicator (`bg-slate-100 font-medium text-slate-800`).
+    - `ActiveTabBanner.tsx`: Conservative URL link pill hover (`hover:border-slate-300 hover:bg-slate-100/50`).
+  - Updated unit tests in `src/entrypoints/sidepanel/__tests__/sidepanelComponents.test.tsx` to verify new button copy, saved check indicator, and equal-width layout.
+
 ### Refactored
 
 - **Modular React Architecture & Custom Hooks (`sidepanel` & `options`):**
